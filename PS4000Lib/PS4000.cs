@@ -61,6 +61,8 @@ namespace PS4000Lib
         #region field
         short _handle;
 
+        string _devInfo = "";
+
         short[][] appBuffers;
         short[][] buffers;
 
@@ -135,13 +137,13 @@ namespace PS4000Lib
                 var res = new StringBuilder();
 
                 var scale = _scaleVoltages ? "mV" : "ADC counts";
-                res.AppendLine($"Readings will be scaled in {scale}");
+                res.Append($"Readings will be scaled in {scale}");
 
                 for (int ch = 0; ch < _channelCount; ch++)
                 {
                     var voltage = InputRanges[(int)_channelSettings[ch].range];
-                    res.Append($"Channel {(char)('A' + ch)} Voltage Range = ");
-                    res.AppendLine(voltage < 1000 ? $"{voltage}mV" : $"{voltage / 1000}V");
+                    res.Append($"\nChannel {(char)('A' + ch)} Voltage Range = ");
+                    res.Append(voltage < 1000 ? $"{voltage}mV" : $"{voltage / 1000}V");
                 }
 
                 return res.ToString();
@@ -152,8 +154,10 @@ namespace PS4000Lib
         {
             get
             {
-                var variant = 0;
-                var description = new[]{
+                if (string.IsNullOrEmpty(_devInfo))
+                {
+                    var variant = 0;
+                    var description = new[]{
                            "Driver Version    ",
                            "USB Version       ",
                            "Hardware Version  ",
@@ -162,63 +166,70 @@ namespace PS4000Lib
                            "Cal Date          ",
                            "Kernel Ver        "
                          };
-                var line = new StringBuilder(80);
-                var result = new StringBuilder();
+                    var line = new StringBuilder(80);
+                    var result = new StringBuilder();
 
-                if (_handle >= 0)
-                {
-                    for (int i = 0; i < 7; i++)
+                    if (_handle >= 0)
                     {
-                        NativeMethods.GetUnitInfo(_handle, line, 80, out short _, i);
-
-                        if (i == 3)
+                        for (int i = 0; i < 7; i++)
                         {
-                            line.Length = 4;
-                            variant = Convert.ToInt16(line.ToString());
-                        }
-                        result.Append($"{description[i]}: {line}");
-                    }
+                            NativeMethods.GetUnitInfo(_handle, line, 80, out short _, i);
 
-                    switch (variant)
-                    {
-                        case (int)Model.PS4223:
-                            _firstRange = Range.Range_50MV;
-                            _lastRange = Range.Range_100V;
-                            _channelCount = DUAL_SCOPE;
-                            break;
-                        case (int)Model.PS4224:
-                            _firstRange = Range.Range_50MV;
-                            _lastRange = Range.Range_20V;
-                            _channelCount = DUAL_SCOPE;
-                            break;
-                        case (int)Model.PS4423:
-                            _firstRange = Range.Range_50MV;
-                            _lastRange = Range.Range_100V;
-                            _channelCount = QUAD_SCOPE;
-                            break;
-                        case (int)Model.PS4424:
-                            _firstRange = Range.Range_50MV;
-                            _lastRange = Range.Range_20V;
-                            _channelCount = QUAD_SCOPE;
-                            break;
-                        case (int)Model.PS4226:
-                            _firstRange = Range.Range_50MV;
-                            _lastRange = Range.Range_20V;
-                            _channelCount = DUAL_SCOPE;
-                            break;
-                        case (int)Model.PS4227:
-                            _firstRange = Range.Range_50MV;
-                            _lastRange = Range.Range_20V;
-                            _channelCount = DUAL_SCOPE;
-                            break;
-                        case (int)Model.PS4262:
-                            _firstRange = Range.Range_10MV;
-                            _lastRange = Range.Range_20V;
-                            _channelCount = DUAL_SCOPE;
-                            break;
+                            if (i == 3)
+                            {
+                                line.Length = 4;
+                                variant = Convert.ToInt16(line.ToString());
+                            }
+
+                            if (i != 0) result.Append("\n");
+                            result.Append($"{description[i]}: {line}");
+                        }
+
+                        switch (variant)
+                        {
+                            case (int)Model.PS4223:
+                                _firstRange = Range.Range_50MV;
+                                _lastRange = Range.Range_100V;
+                                _channelCount = DUAL_SCOPE;
+                                break;
+                            case (int)Model.PS4224:
+                                _firstRange = Range.Range_50MV;
+                                _lastRange = Range.Range_20V;
+                                _channelCount = DUAL_SCOPE;
+                                break;
+                            case (int)Model.PS4423:
+                                _firstRange = Range.Range_50MV;
+                                _lastRange = Range.Range_100V;
+                                _channelCount = QUAD_SCOPE;
+                                break;
+                            case (int)Model.PS4424:
+                                _firstRange = Range.Range_50MV;
+                                _lastRange = Range.Range_20V;
+                                _channelCount = QUAD_SCOPE;
+                                break;
+                            case (int)Model.PS4226:
+                                _firstRange = Range.Range_50MV;
+                                _lastRange = Range.Range_20V;
+                                _channelCount = DUAL_SCOPE;
+                                break;
+                            case (int)Model.PS4227:
+                                _firstRange = Range.Range_50MV;
+                                _lastRange = Range.Range_20V;
+                                _channelCount = DUAL_SCOPE;
+                                break;
+                            case (int)Model.PS4262:
+                                _firstRange = Range.Range_10MV;
+                                _lastRange = Range.Range_20V;
+                                _channelCount = DUAL_SCOPE;
+                                break;
+                        }
                     }
+                    return result.ToString();
                 }
-                return result.ToString();
+                else
+                {
+                    return _devInfo;
+                }
             }
         }
 
@@ -228,12 +239,18 @@ namespace PS4000Lib
         #region controll
         public void Open()
         {
-            short status = NativeMethods.OpenUnit(out short handle);
+            var status = NativeMethods.OpenUnit(out short handle);
 
             if (status != StatusCodes.PICO_OK)
                 throw new IOException($"Error. Cannot open device. Code: {status}");
             else
                 _handle = handle;
+
+            _devInfo = DeviceInfo;
+            SetChannel();
+
+            var timebase = 1u;
+            SetTimebase(ref timebase, out int _);
         }
 
         public void Close()
@@ -243,22 +260,19 @@ namespace PS4000Lib
         #endregion
 
         #region get data
-        public async Task<string> CollectBlockImmediate() => await CollectBlockImmediate(CancellationToken.None);
-        public async Task<string> CollectBlockImmediate(CancellationToken cancellationToken)
+        public string CollectBlockImmediate()
         {
             SetTrigger(null, null, null, null, 0, 0, 0);
-            return await BlockDataHandler(cancellationToken);
+            return BlockDataHandler();
         }
 
-        public async Task<string> CollectBlockTriggered() => await CollectBlockTriggered();
-        public async Task<string> CollectBlockTriggered(CancellationToken cancellationToken)
+        public string CollectBlockTriggered()
         {
             SetTrigger(_sourceDetails.ToArray(), _conditions.ToArray(), _directions.ToArray(), Pwq, 0, 0, 0);
-            return await BlockDataHandler(cancellationToken);
+            return BlockDataHandler();
         }
 
-        public async Task<short[][][]> CollectBlockRapid(ushort numRapidCaptures) => await CollectBlockRapid(numRapidCaptures);
-        public async Task<short[][][]> CollectBlockRapid(ushort numRapidCaptures, CancellationToken cancellationToken)
+        public short[][][] CollectBlockRapid(ushort numRapidCaptures)
         {
             if (NativeMethods.SetNoOfRapidCaptures(_handle, numRapidCaptures) > 0)
             {
@@ -269,233 +283,223 @@ namespace PS4000Lib
 
             SetTrigger(null, null, null, null, 0, 0, 0);
 
-            return await RapidBlockDataHandler(numRapidCaptures, cancellationToken);
+            return RapidBlockDataHandler(numRapidCaptures);
         }
 
-        public async Task<string> CollectStreamingImmediate() => await CollectStreamingImmediate(CancellationToken.None);
-        public async Task<string> CollectStreamingImmediate(CancellationToken cancellationToken)
+        public string CollectStreamingImmediate()
         {
             SetTrigger(null, null, null, null, 0, 0, 0);
-            return await StreamDataHandler(0, cancellationToken);
+            return StreamDataHandler(0);
         }
-        public async Task<string> CollectStreamingTriggered() => await CollectStreamingTriggered(CancellationToken.None);
-        public async Task<string> CollectStreamingTriggered(CancellationToken cancellationToken)
+        public string CollectStreamingTriggered()
         {
             SetTrigger(_sourceDetails.ToArray(), _conditions.ToArray(), _directions.ToArray(), null, 0, 0, 0);
-            return await StreamDataHandler(100000, cancellationToken);
+            return StreamDataHandler(100000);
         }
 
-        private async Task<short[][][]> RapidBlockDataHandler(ushort nRapidCaptures, CancellationToken cancellationToken)
+        private short[][][] RapidBlockDataHandler(ushort nRapidCaptures)
         {
-            return await Task.Run(() =>
+            short status;
+            int numChannels = _channelCount;
+            uint numSamples = BUFFER_SIZE;
+
+            // Run the rapid block capture
+            _ready = false;
+
+            _callbackDelegate = BlockCallback;
+
+            NativeMethods.RunBlock(_handle,
+                        0,
+                        (int)numSamples,
+                        _timebase,
+                        _oversample,
+                        out int timeIndisposed,
+                        0,
+                        _callbackDelegate,
+                        IntPtr.Zero);
+
+            while (!_ready)
             {
-                short status;
-                int numChannels = _channelCount;
-                uint numSamples = BUFFER_SIZE;
+                Thread.Sleep(100);
+            }
 
-                // Run the rapid block capture
-                _ready = false;
+            NativeMethods.Stop(_handle);
 
-                _callbackDelegate = BlockCallback;
+            var values = new short[nRapidCaptures][][];
+            var pinned = new PinnedArray<short>[nRapidCaptures, numChannels];
 
-                NativeMethods.RunBlock(_handle,
-                            0,
-                            (int)numSamples,
-                            _timebase,
-                            _oversample,
-                            out int timeIndisposed,
-                            0,
-                            _callbackDelegate,
-                            IntPtr.Zero);
-
-                while (!_ready && (cancellationToken == CancellationToken.None || !cancellationToken.IsCancellationRequested))
+            for (ushort segment = 0; segment < nRapidCaptures; segment++)
+            {
+                values[segment] = new short[numChannels][];
+                for (short channel = 0; channel < numChannels; channel++)
                 {
-                    Thread.Sleep(100);
-                }
-
-                NativeMethods.Stop(_handle);
-
-                var values = new short[nRapidCaptures][][];
-                var pinned = new PinnedArray<short>[nRapidCaptures, numChannels];
-
-                for (ushort segment = 0; segment < nRapidCaptures; segment++)
-                {
-                    values[segment] = new short[numChannels][];
-                    for (short channel = 0; channel < numChannels; channel++)
+                    if (_channelSettings[channel].enabled)
                     {
-                        if (_channelSettings[channel].enabled)
-                        {
-                            values[segment][channel] = new short[numSamples];
-                            pinned[segment, channel] = new PinnedArray<short>(values[segment][channel]);
+                        values[segment][channel] = new short[numSamples];
+                        pinned[segment, channel] = new PinnedArray<short>(values[segment][channel]);
 
-                            status = NativeMethods.SetDataBuffersRapid(_handle,
-                                                   (Channel)channel,
-                                                   values[segment][channel],
-                                                   (int)numSamples,
-                                                   segment);
-                        }
-                        else
-                        {
-                            status = NativeMethods.SetDataBuffersRapid(_handle,
-                                       (Channel)channel,
-                                        null,
-                                        0,
-                                        segment);
+                        status = NativeMethods.SetDataBuffersRapid(_handle,
+                                               (Channel)channel,
+                                               values[segment][channel],
+                                               (int)numSamples,
+                                               segment);
+                    }
+                    else
+                    {
+                        status = NativeMethods.SetDataBuffersRapid(_handle,
+                                   (Channel)channel,
+                                    null,
+                                    0,
+                                    segment);
 
-                        }
                     }
                 }
+            }
 
-                var overflows = new short[nRapidCaptures];
+            var overflows = new short[nRapidCaptures];
 
-                status = NativeMethods.GetValuesRapid(_handle, ref numSamples, 0, (ushort)(nRapidCaptures - 1), overflows);
+            status = NativeMethods.GetValuesRapid(_handle, ref numSamples, 0, (ushort)(nRapidCaptures - 1), overflows);
 
-                foreach (PinnedArray<short> p in pinned)
-                    p?.Dispose();
+            foreach (PinnedArray<short> p in pinned)
+                p?.Dispose();
 
-                return values;
-            });
+            return values;
         }
-        private async Task<string> BlockDataHandler(CancellationToken cancellationToken)
+        private string BlockDataHandler()
         {
-            return await Task.Run(() =>
+            var res = string.Empty;
+
+            uint sampleCount = BUFFER_SIZE;
+            var minPinned = new PinnedArray<short>[_channelCount];
+            var maxPinned = new PinnedArray<short>[_channelCount];
+
+            for (int i = 0; i < _channelCount; i++)
             {
-                var res = string.Empty;
+                var minBuffers = new short[sampleCount];
+                var maxBuffers = new short[sampleCount];
+                minPinned[i] = new PinnedArray<short>(minBuffers);
+                maxPinned[i] = new PinnedArray<short>(maxBuffers);
+                NativeMethods.SetDataBuffers(_handle, (Channel)i, maxBuffers, minBuffers, (int)sampleCount);
+            }
 
-                uint sampleCount = BUFFER_SIZE;
-                var minPinned = new PinnedArray<short>[_channelCount];
-                var maxPinned = new PinnedArray<short>[_channelCount];
+            /*  Verify the currently selected timebase index, and the maximum number of samples per channel with the current settings. */
+            int timeInterval;
 
-                for (int i = 0; i < _channelCount; i++)
+            while (NativeMethods.GetTimebase(_handle, _timebase, (int)sampleCount, out timeInterval, _oversample, out int maxSamples, 0) != 0)
+                _timebase++;
+
+            /* Start it collecting, then wait for completion*/
+            _ready = false;
+            _callbackDelegate = BlockCallback;
+
+            NativeMethods.RunBlock(_handle, 0, (int)sampleCount, _timebase, _oversample, out int timeIndisposed, 0, _callbackDelegate, IntPtr.Zero);
+
+            while (!_ready)
+            {
+                Thread.Sleep(100);
+            }
+
+            NativeMethods.Stop(_handle);
+
+            if (_ready)
+            {
+                NativeMethods.GetValues(_handle, 0, ref sampleCount, 1, DownSamplingMode.None, 0, out short overflow);
+                res = FormatBlockData(Math.Min(sampleCount, BUFFER_SIZE), timeInterval, minPinned, maxPinned);
+            }
+            else
+                res = "data collection aborted";
+
+            foreach (PinnedArray<short> p in minPinned) p?.Dispose();
+            foreach (PinnedArray<short> p in maxPinned) p?.Dispose();
+
+            return res;
+        }
+        private string StreamDataHandler(uint preTrigger)
+        {
+            var res = string.Empty;
+            uint sampleCount = BUFFER_SIZE * 10; /*  *10 is to make sure buffer large enough */
+            appBuffers = new short[_channelCount * 2][];
+            buffers = new short[_channelCount * 2][];
+
+            var totalsamples = 0u;
+            var triggeredAt = 0u;
+            short status;
+
+            var sampleInterval = 1u;
+
+            for (int ch = 0; ch < _channelCount * 2; ch += 2)
+            {
+                appBuffers[ch] = new short[sampleCount];
+                appBuffers[ch + 1] = new short[sampleCount];
+
+                buffers[ch] = new short[sampleCount];
+                buffers[ch + 1] = new short[sampleCount];
+
+                status = NativeMethods.SetDataBuffers(_handle, (Channel)(ch / 2), buffers[ch], buffers[ch + 1], (int)sampleCount);
+            }
+
+            _autoStop = false;
+            status = NativeMethods.RunStreaming(_handle, ref sampleInterval, ReportedTimeUnits.MicroSeconds,
+                                        preTrigger, 1000000 - preTrigger, true, 1000, sampleCount);
+
+            // Build File Header
+            var sb = new StringBuilder();
+            var heading = new[] { "Channel", "Max ADC", "Max mV", "Min ADC", "Min mV" };
+
+            sb.AppendLine("For each of the active channels, results shown are....");
+            sb.AppendLine("Maximum Aggregated value ADC Count & mV, Minimum Aggregated value ADC Count & mV");
+            sb.AppendLine();
+
+            for (int i = 0; i < _channelCount; i++)
+            {
+                if (_channelSettings[i].enabled)
                 {
-                    var minBuffers = new short[sampleCount];
-                    var maxBuffers = new short[sampleCount];
-                    minPinned[i] = new PinnedArray<short>(minBuffers);
-                    maxPinned[i] = new PinnedArray<short>(maxBuffers);
-                    NativeMethods.SetDataBuffers(_handle, (Channel)i, maxBuffers, minBuffers, (int)sampleCount);
+                    sb.AppendFormat("{0,10} {1,10} {2,10} {3,10} {4,10}",
+                                    heading[0],
+                                    heading[1],
+                                    heading[2],
+                                    heading[3],
+                                    heading[4]);
                 }
+            }
+            sb.AppendLine();
 
-                /*  Verify the currently selected timebase index, and the maximum number of samples per channel with the current settings. */
-                int timeInterval;
-
-                while (NativeMethods.GetTimebase(_handle, _timebase, (int)sampleCount, out timeInterval, _oversample, out int maxSamples, 0) != 0)
-                    _timebase++;
-
-                /* Start it collecting, then wait for completion*/
+            while (!_autoStop)
+            {
+                /* Poll until data is received. Until then, GetStreamingLatestValues wont call the callback */
+                Thread.Sleep(100);
                 _ready = false;
-                _callbackDelegate = BlockCallback;
-                NativeMethods.RunBlock(_handle, 0, (int)sampleCount, _timebase, _oversample, out int timeIndisposed, 0, _callbackDelegate, IntPtr.Zero);
+                NativeMethods.GetStreamingLatestValues(_handle, StreamingCallback, IntPtr.Zero);
 
-                while (!_ready && (cancellationToken == CancellationToken.None || !cancellationToken.IsCancellationRequested))
+                if (_ready && _sampleCount > 0) /* can be ready and have no data, if autoStop has fired */
                 {
-                    Thread.Sleep(100);
-                }
+                    if (_trig > 0) triggeredAt = totalsamples + _trigAt;
+                    totalsamples += (uint)_sampleCount;
 
-                NativeMethods.Stop(_handle);
-
-                if (_ready)
-                {
-                    NativeMethods.GetValues(_handle, 0, ref sampleCount, 1, DownSamplingMode.None, 0, out short overflow);
-                    res = FormatBlockData(Math.Min(sampleCount, BUFFER_SIZE), timeInterval, minPinned, maxPinned);
-                }
-                else
-                    res = "data collection aborted";
-
-                foreach (PinnedArray<short> p in minPinned) p?.Dispose();
-                foreach (PinnedArray<short> p in maxPinned) p?.Dispose();
-
-                return res;
-            });
-        }
-        private async Task<string> StreamDataHandler(uint preTrigger, CancellationToken cancellationToken)
-        {
-            return await Task.Run(() =>
-            {
-                var res = string.Empty;
-                uint sampleCount = BUFFER_SIZE * 10; /*  *10 is to make sure buffer large enough */
-                appBuffers = new short[_channelCount * 2][];
-                buffers = new short[_channelCount * 2][];
-
-                var totalsamples = 0u;
-                var triggeredAt = 0u;
-                short status;
-
-                var sampleInterval = 1u;
-
-                for (int ch = 0; ch < _channelCount * 2; ch += 2)
-                {
-                    appBuffers[ch] = new short[sampleCount];
-                    appBuffers[ch + 1] = new short[sampleCount];
-
-                    buffers[ch] = new short[sampleCount];
-                    buffers[ch + 1] = new short[sampleCount];
-
-                    status = NativeMethods.SetDataBuffers(_handle, (Channel)(ch / 2), buffers[ch], buffers[ch + 1], (int)sampleCount);
-                }
-
-                _autoStop = false;
-                status = NativeMethods.RunStreaming(_handle, ref sampleInterval, ReportedTimeUnits.MicroSeconds,
-                                            preTrigger, 1000000 - preTrigger, true, 1000, sampleCount);
-
-                // Build File Header
-                var sb = new StringBuilder();
-                var heading = new[] { "Channel", "Max ADC", "Max mV", "Min ADC", "Min mV" };
-
-                sb.AppendLine("For each of the active channels, results shown are....");
-                sb.AppendLine("Maximum Aggregated value ADC Count & mV, Minimum Aggregated value ADC Count & mV");
-                sb.AppendLine();
-
-                for (int i = 0; i < _channelCount; i++)
-                {
-                    if (_channelSettings[i].enabled)
+                    // Build File Body
+                    for (uint i = _startIndex; i < (_startIndex + _sampleCount); i++)
                     {
-                        sb.AppendFormat("{0,10} {1,10} {2,10} {3,10} {4,10}",
-                                        heading[0],
-                                        heading[1],
-                                        heading[2],
-                                        heading[3],
-                                        heading[4]);
-                    }
-                }
-                sb.AppendLine();
-
-                while (!_autoStop && (cancellationToken == CancellationToken.None || !cancellationToken.IsCancellationRequested))
-                {
-                    /* Poll until data is received. Until then, GetStreamingLatestValues wont call the callback */
-                    Thread.Sleep(100);
-                    _ready = false;
-                    NativeMethods.GetStreamingLatestValues(_handle, StreamingCallback, IntPtr.Zero);
-
-                    if (_ready && _sampleCount > 0) /* can be ready and have no data, if autoStop has fired */
-                    {
-                        if (_trig > 0) triggeredAt = totalsamples + _trigAt;
-                        totalsamples += (uint)_sampleCount;
-
-                        // Build File Body
-                        for (uint i = _startIndex; i < (_startIndex + _sampleCount); i++)
+                        for (int ch = 0; ch < _channelCount * 2; ch += 2)
                         {
-                            for (int ch = 0; ch < _channelCount * 2; ch += 2)
+                            if (_channelSettings[ch / 2].enabled)
                             {
-                                if (_channelSettings[ch / 2].enabled)
-                                {
-                                    sb.AppendFormat("{0,10} {1,10} {2,10} {3,10} {4,10}",
-                                                    (char)('A' + (ch / 2)),
-                                                    appBuffers[ch][i],
-                                                    ConvertADC2mV(appBuffers[ch][i], (int)_channelSettings[GetChannelIndex(ch / 2)].range),
-                                                    appBuffers[ch + 1][i],
-                                                    ConvertADC2mV(appBuffers[ch + 1][i], (int)_channelSettings[GetChannelIndex(ch / 2)].range));
-                                }
+                                sb.AppendFormat("{0,10} {1,10} {2,10} {3,10} {4,10}",
+                                                (char)('A' + (ch / 2)),
+                                                appBuffers[ch][i],
+                                                ConvertADC2mV(appBuffers[ch][i], (int)_channelSettings[GetChannelIndex(ch / 2)].range),
+                                                appBuffers[ch + 1][i],
+                                                ConvertADC2mV(appBuffers[ch + 1][i], (int)_channelSettings[GetChannelIndex(ch / 2)].range));
                             }
-
-                            sb.AppendLine();
                         }
+
+                        sb.AppendLine();
                     }
                 }
+            }
 
-                NativeMethods.Stop(_handle);
+            NativeMethods.Stop(_handle);
 
-                return _autoStop ? sb.ToString() : "data collection aborted";
-            });
+            return _autoStop ? sb.ToString() : "data collection aborted";
         }
 
         #endregion
@@ -627,13 +631,14 @@ namespace PS4000Lib
         public bool SetTimebase(ref uint timebase, out int timeInterval)
         {
             var valid = true;
-            _timebase = timebase;
 
             while (NativeMethods.GetTimebase(_handle, _timebase, BUFFER_SIZE, out timeInterval, 1, out int maxSamples, 0) != 0)
             {
                 valid = false;
-                _timebase++;
+                timebase++;
             }
+
+            _timebase = timebase;
             _oversample = 1;
 
             return valid;
