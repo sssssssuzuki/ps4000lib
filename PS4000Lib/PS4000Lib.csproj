@@ -59,10 +59,26 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Channel.cs" />
-    <Compile Include="CouplingMode.cs" />
+    <Compile Include="Enum\ChannelNum.cs" />
+    <Compile Include="Enum\Model.cs" />
+    <Compile Include="Enum\Scale.cs" />
+    <Compile Include="PicoException.cs" />
+    <Compile Include="Shared\PicoPinnedArray.cs" />
+    <Compile Include="Shared\PicoStatus.cs" />
+    <Compile Include="Enum\CouplingMode.cs" />
+    <Compile Include="Enum\DownSamplingMode.cs" />
+    <Compile Include="NativeMethods.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="PS4000.cs" />
-    <Compile Include="Range.cs" />
+    <Compile Include="Enum\PulseWidthType.cs" />
+    <Compile Include="Enum\Range.cs" />
+    <Compile Include="Enum\ReportedTimeUnits.cs" />
+    <Compile Include="Enum\ThresholdDirection.cs" />
+    <Compile Include="Enum\ThresholdMode.cs" />
+    <Compile Include="Enum\TriggerState.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Util\" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

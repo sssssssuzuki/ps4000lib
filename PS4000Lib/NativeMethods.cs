@@ -1,4 +1,5 @@
-﻿using System;
+﻿using PS4000Lib.Enum;
+using System;
 using System.Runtime.InteropServices;
 using System.Text;
 
@@ -12,7 +13,7 @@ namespace PS4000Lib
         public ushort HysteresisMajor;
         public short ThresholdMinor;
         public ushort HysteresisMinor;
-        public Channel Channel;
+        public ChannelType Channel;
         public ThresholdMode ThresholdMode;
 
         public TriggerChannelProperties(
@@ -20,7 +21,7 @@ namespace PS4000Lib
             ushort hysteresisMajor,
             short thresholdMinor,
             ushort hysteresisMinor,
-            Channel channel,
+            ChannelType channel,
             ThresholdMode thresholdMode)
         {
             this.ThresholdMajor = thresholdMajor;
@@ -134,27 +135,27 @@ namespace PS4000Lib
         [DllImport(_DRIVER_FILENAME, EntryPoint = "ps4000SetChannel")]
         public static extern short SetChannel(
                                                 short handle,
-                                                Channel channel,
+                                                ChannelType channel,
                                                 short enabled,
                                                 short dc,
                                                 Range range);
         [DllImport(_DRIVER_FILENAME, EntryPoint = "ps4000SetDataBuffer")]
         public static extern short SetDataBuffer(
                                                 short handle,
-                                                Channel channel,
+                                                ChannelType channel,
                                                 short[] buffer,
                                                 int bufferLth);
         [DllImport(_DRIVER_FILENAME, EntryPoint = "ps4000SetDataBuffers")]
         public static extern short SetDataBuffers(
                                                 short handle,
-                                                Channel channel,
+                                                ChannelType channel,
                                                 short[] bufferMax,
                                                 short[] bufferMin,
                                                 int bufferLth);
         [DllImport(_DRIVER_FILENAME, EntryPoint = "ps4000SetDataBufferWithMode")]
         public static extern short SetDataBufferWithMode(
                                                 short handle,
-                                                Channel channel,
+                                                ChannelType channel,
                                                 short[] buffer,
                                                 int bufferLth,
                                                 DownSamplingMode mode);
@@ -207,7 +208,8 @@ namespace PS4000Lib
                                                 TriggerConditions[] conditions,
                                                 short numConditions);
         [DllImport(_DRIVER_FILENAME, EntryPoint = "ps4000SetTriggerDelay")] public static extern short SetTriggerDelay(short handle, uint delay);
-        [DllImport(_DRIVER_FILENAME, EntryPoint = "ps4000GetUnitInfo")] public static extern short GetUnitInfo(short handle, StringBuilder infoString, short stringLength, out short requiredSize, int info);
+        [DllImport(_DRIVER_FILENAME, EntryPoint = "ps4000GetUnitInfo", CharSet = CharSet.Ansi, BestFitMapping = false, ThrowOnUnmappableChar = true)]
+        public static extern short GetUnitInfo(short handle, [MarshalAs(UnmanagedType.LPStr)] StringBuilder infoString, short stringLength, out short requiredSize, int info);
         [DllImport(_DRIVER_FILENAME, EntryPoint = "ps4000RunStreaming")]
         public static extern short RunStreaming(
                                                 short handle,
@@ -235,7 +237,7 @@ namespace PS4000Lib
         [DllImport(_DRIVER_FILENAME, EntryPoint = "ps4000SetDataBufferBulk")]
         public static extern short SetDataBuffersRapid(
                                                 short handle,
-                                                Channel channel,
+                                                ChannelType channel,
                                                 short[] buffer,
                                                 int bufferLth,
                                                 ushort waveform);
