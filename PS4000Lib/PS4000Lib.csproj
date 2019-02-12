@@ -59,7 +59,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Channel.cs" />
-    <Compile Include="Enum\ChannelNum.cs" />
+    <Compile Include="Enum\ChannelType.cs" />
     <Compile Include="Enum\Model.cs" />
     <Compile Include="Enum\Scale.cs" />
     <Compile Include="PicoException.cs" />

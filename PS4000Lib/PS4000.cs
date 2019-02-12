@@ -40,7 +40,6 @@ namespace PS4000Lib
     {
         #region const
         public const int MaxValue = 32764;
-        public const int BUFFER_SIZE = 1024;
         public const int MAX_CHANNELS = 4;
         public const int QUAD_SCOPE = 4;
         public const int DUAL_SCOPE = 2;
@@ -62,6 +61,8 @@ namespace PS4000Lib
         #region property
         public bool IsOpen { get; private set; }
 
+        public Model Model { get; private set; }
+
         public Channel ChannelA { get; }
         public Channel ChannelB { get; }
         public Channel ChannelC { get; }
@@ -73,7 +74,31 @@ namespace PS4000Lib
         public Range MinRange { get; private set; }
         public Range MaxRange { get; private set; }
 
-        public int TimeInterval => _timeInterval;
+        public int BufferSize { get; set; }
+
+        public double SamplingRateHz
+        {
+            get
+            {
+                return 1000_000_000.0 / SamplingIntervalNanoSec;
+            }
+            set
+            {
+                SamplingIntervalNanoSec = 1000_000_000.0 / value;
+            }
+
+        }
+        public double SamplingIntervalNanoSec
+        {
+            get
+            {
+                return _timeInterval;
+            }
+            set
+            {
+                Timebase = ConvertSamplingInterval2Timebase(value);
+            }
+        }
         public uint Timebase
         {
             get
@@ -82,7 +107,8 @@ namespace PS4000Lib
             }
             set
             {
-                while (NativeMethods.GetTimebase(_handle, _timebase, BUFFER_SIZE, out _timeInterval, OverSample, out _maxSamples, 0) != 0)
+                _timebase = value;
+                while (NativeMethods.GetTimebase(_handle, _timebase, BufferSize, out _timeInterval, OverSample, out _maxSamples, 0) != 0)
                     _timebase++;
             }
         }
@@ -129,9 +155,8 @@ namespace PS4000Lib
             ChannelAux = new Channel(ChannelType.Aux, "Aux");
             ChannelPwq = new Channel(ChannelType.None, "Pwq");
 
-            OverSample = 1;
-            Scaling = Scale.mV;
-            SetDeviceInfo();
+            foreach (var ch in EnumerateChannel(false, false))
+                ch.SettingUpdate += SetChannel;
         }
 
         ~PS4000()
@@ -145,12 +170,23 @@ namespace PS4000Lib
         {
             var status = NativeMethods.OpenUnit(out short handle);
             _handle = (status == StatusCodes.PICO_OK) ? handle : throw new PicoException(status);
+
+            OverSample = 1;
+            Scaling = Scale.mV;
+            SetDeviceInfo();
+
+            SetChannel();
+            Timebase = 0u;
+
             this.IsOpen = true;
         }
         public void Close()
         {
             if (this.IsOpen)
             {
+                foreach (var ch in EnumerateChannel(false, false))
+                    ch.SettingUpdate -= SetChannel;
+
                 NativeMethods.CloseUnit(_handle);
                 this.IsOpen = false;
             }
@@ -190,7 +226,7 @@ namespace PS4000Lib
         {
             var res = string.Empty;
 
-            uint sampleCount = BUFFER_SIZE;
+            var sampleCount = (uint)BufferSize;
             var minPinned = new PinnedArray<short>[_channelCount];
             var maxPinned = new PinnedArray<short>[_channelCount];
 
@@ -223,10 +259,10 @@ namespace PS4000Lib
             if (_ready)
             {
                 NativeMethods.GetValues(_handle, 0, ref sampleCount, 1, DownSamplingMode.None, 0, out short overflow);
-                res = FormatBlockData(Math.Min(sampleCount, BUFFER_SIZE), timeInterval, minPinned, maxPinned);
+                res = FormatBlockData(Math.Min(sampleCount, (uint)BufferSize), timeInterval, minPinned, maxPinned);
             }
             else
-                res = "data collection aborted";
+                res = "data collection aborted.";
 
             foreach (PinnedArray<short> p in minPinned) p?.Dispose();
             foreach (PinnedArray<short> p in maxPinned) p?.Dispose();
@@ -296,6 +332,8 @@ namespace PS4000Lib
                                   (short)(ch.Coupling == CouplingMode.DC ? 1 : 0),
                                   ch.Range);
             }
+
+            Console.WriteLine("UPDATE");
         }
 
         private void SetDeviceInfo()
@@ -333,36 +371,43 @@ namespace PS4000Lib
                 switch (variant)
                 {
                     case (int)Model.PS4223:
+                        this.Model = Model.PS4223;
                         MinRange = Range.Range_50MV;
                         MaxRange = Range.Range_100V;
                         _channelCount = DUAL_SCOPE;
                         break;
                     case (int)Model.PS4224:
+                        this.Model = Model.PS4224;
                         MinRange = Range.Range_50MV;
                         MaxRange = Range.Range_20V;
                         _channelCount = DUAL_SCOPE;
                         break;
                     case (int)Model.PS4423:
+                        this.Model = Model.PS4423;
                         MinRange = Range.Range_50MV;
                         MaxRange = Range.Range_100V;
                         _channelCount = QUAD_SCOPE;
                         break;
                     case (int)Model.PS4424:
+                        this.Model = Model.PS4424;
                         MinRange = Range.Range_50MV;
                         MaxRange = Range.Range_20V;
                         _channelCount = QUAD_SCOPE;
                         break;
                     case (int)Model.PS4226:
+                        this.Model = Model.PS4226;
                         MinRange = Range.Range_50MV;
                         MaxRange = Range.Range_20V;
                         _channelCount = DUAL_SCOPE;
                         break;
                     case (int)Model.PS4227:
+                        this.Model = Model.PS4227;
                         MinRange = Range.Range_50MV;
                         MaxRange = Range.Range_20V;
                         _channelCount = DUAL_SCOPE;
                         break;
                     case (int)Model.PS4262:
+                        this.Model = Model.PS4262;
                         MinRange = Range.Range_10MV;
                         MaxRange = Range.Range_20V;
                         _channelCount = DUAL_SCOPE;
@@ -423,6 +468,43 @@ namespace PS4000Lib
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private int ConvertADC2mV(int raw, Range range) => (raw * InputRanges[(int)range]) / MaxValue;
+
+        private uint ConvertSamplingInterval2Timebase(double samplingIntervalNanoSec)
+        {
+            switch (this.Model)
+            {
+                case Model.PS4223:
+                case Model.PS4224:
+                case Model.PS4423:
+                case Model.PS4424:
+                    return samplingIntervalNanoSec <= 50.0 ? (uint)(Math.Log(samplingIntervalNanoSec * 80_000_000 / 1000_000_000) / Math.Log(2)) : (uint)(samplingIntervalNanoSec * 20_000_000 / 1000_000_000) + 1u;
+                case Model.PS4226:
+                case Model.PS4227:
+                    return samplingIntervalNanoSec <= 32.0 ? (uint)(Math.Log(samplingIntervalNanoSec / 1000_000_000 * 250_000_000) / Math.Log(2)) : (uint)(samplingIntervalNanoSec / 1000_000_000 * 31_250_000) + 2u;
+                case Model.PS4262:
+                    return (uint)(samplingIntervalNanoSec / 1000_000_000 * 10_000_000) - 1u;
+                default:
+                    throw new NotSupportedException(nameof(this.Model));
+            }
+        }
+        private double ConvertTimebase2SamplingInterval(uint timebase)
+        {
+            switch (this.Model)
+            {
+                case Model.PS4223:
+                case Model.PS4224:
+                case Model.PS4423:
+                case Model.PS4424:
+                    return timebase <= 2u ? Math.Pow(2, timebase) * 12.5 : (timebase - 1u) * 50.0;
+                case Model.PS4226:
+                case Model.PS4227:
+                    return timebase <= 3u ? Math.Pow(2, timebase) * 4.0 : (timebase - 2u) * 32.0;
+                case Model.PS4262:
+                    return (timebase + 1) * 100.0;
+                default:
+                    throw new NotSupportedException(nameof(this.Model));
+            }
+        }
 
         private IEnumerable<Channel> EnumerateChannel(bool includeExtAux, bool includePwq)
         {
