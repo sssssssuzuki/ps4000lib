@@ -50,7 +50,7 @@ namespace PS4000Lib
         private bool _disposed = false;
         private short _handle;
         private uint _timebase;
-        private int _timeInterval;
+        private double _timeInterval;
         private int _maxSamples;
         private int _channelCount;
         private bool _ready;
@@ -80,14 +80,15 @@ namespace PS4000Lib
         {
             get
             {
-                return 1000_000_000.0 / SamplingIntervalNanoSec;
+                return 1_000_000_000.0 / SamplingIntervalNanoSec;
             }
             set
             {
-                SamplingIntervalNanoSec = 1000_000_000.0 / value;
+                SamplingIntervalNanoSec = 1_000_000_000.0 / value;
             }
 
         }
+
         public double SamplingIntervalNanoSec
         {
             get
@@ -97,6 +98,7 @@ namespace PS4000Lib
             set
             {
                 Timebase = ConvertSamplingInterval2Timebase(value);
+                _timeInterval = ConvertTimebase2SamplingInterval(Timebase);
             }
         }
         public uint Timebase
@@ -108,7 +110,7 @@ namespace PS4000Lib
             set
             {
                 _timebase = value;
-                while (NativeMethods.GetTimebase(_handle, _timebase, BufferSize, out _timeInterval, OverSample, out _maxSamples, 0) != 0)
+                while (NativeMethods.GetTimebase(_handle, _timebase, BufferSize, out _, OverSample, out _maxSamples, 0) != 0)
                     _timebase++;
             }
         }
@@ -130,11 +132,6 @@ namespace PS4000Lib
                     var voltage = InputRanges[(int)ch.Range];
                     res.Append($"\nChannel {ch.Name} Voltage Range = ");
                     res.Append(voltage < 1000 ? $"{voltage}mV" : $"{voltage / 1000}V");
-                }
-
-                for (int ch = 0; ch < _channelCount; ch++)
-                {
-
                 }
 
                 return res.ToString();
@@ -180,6 +177,7 @@ namespace PS4000Lib
 
             this.IsOpen = true;
         }
+
         public void Close()
         {
             if (this.IsOpen)
@@ -338,7 +336,6 @@ namespace PS4000Lib
 
         private void SetDeviceInfo()
         {
-
             var variant = 0;
             var description = new[]{
                            "Driver Version    ",
@@ -477,12 +474,12 @@ namespace PS4000Lib
                 case Model.PS4224:
                 case Model.PS4423:
                 case Model.PS4424:
-                    return samplingIntervalNanoSec <= 50.0 ? (uint)(Math.Log(samplingIntervalNanoSec * 80_000_000 / 1000_000_000) / Math.Log(2)) : (uint)(samplingIntervalNanoSec * 20_000_000 / 1000_000_000) + 1u;
+                    return samplingIntervalNanoSec <= 50.0 ? (uint)(Math.Log(samplingIntervalNanoSec * 80_000_000 / 1_000_000_000) / Math.Log(2)) : (uint)(samplingIntervalNanoSec * 20_000_000 / 1_000_000_000) + 1u;
                 case Model.PS4226:
                 case Model.PS4227:
-                    return samplingIntervalNanoSec <= 32.0 ? (uint)(Math.Log(samplingIntervalNanoSec / 1000_000_000 * 250_000_000) / Math.Log(2)) : (uint)(samplingIntervalNanoSec / 1000_000_000 * 31_250_000) + 2u;
+                    return samplingIntervalNanoSec <= 32.0 ? (uint)(Math.Log(samplingIntervalNanoSec / 1_000_000_000 * 250_000_000) / Math.Log(2)) : (uint)(samplingIntervalNanoSec / 1_000_000_000 * 31_250_000) + 2u;
                 case Model.PS4262:
-                    return (uint)(samplingIntervalNanoSec / 1000_000_000 * 10_000_000) - 1u;
+                    return (uint)(samplingIntervalNanoSec / 1_000_000_000 * 10_000_000) - 1u;
                 default:
                     throw new NotSupportedException(nameof(this.Model));
             }

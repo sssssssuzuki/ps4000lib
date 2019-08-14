@@ -15,7 +15,18 @@ namespace PS4000Lib.Example
 
             ps4000.BufferSize = 10;
 
-            Console.WriteLine(ps4000.CollectBlockImmediate());
+            BlockData blockdata = ps4000.CollectBlockImmediate();
+            short[][][] data = blockdata.Data; // mv
+
+            Console.WriteLine(blockdata);
+            //<Header>
+            //<data...>
+
+            BlockData.Delim = ",";
+            BlockData.IgnoreHeader = true;
+
+            Console.WriteLine(blockdata);
+            //<data...>
 
             ps4000.ChannelB.Enabled = false;
             ps4000.ChannelA.Range = Range.Range_1V;

@@ -17,8 +17,7 @@ namespace PS4000Lib
 
         public static string ToMessgae(uint status)
         {
-            var message = string.Empty;
-
+            string message;
             switch (status)
             {
                 case StatusCodes.PICO_MAX_UNITS_OPENED:
