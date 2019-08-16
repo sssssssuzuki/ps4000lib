@@ -3,12 +3,10 @@ using PicoStatus;
 using PS4000Lib.Enum;
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
 
 namespace PS4000Lib
 {
@@ -116,7 +114,7 @@ namespace PS4000Lib
         }
         public short OverSample { get; set; }
         public int MaxSamples => _maxSamples;
-        public Scale Scaling { get; set; }
+        public Scale Scale { get; set; }
 
         public string Settings
         {
@@ -124,7 +122,7 @@ namespace PS4000Lib
             {
                 var res = new StringBuilder();
 
-                var scale = Scaling == Scale.mV ? "mV" : "ADC counts";
+                var scale = Scale == Scale.mV ? "mV" : "ADC counts";
                 res.Append($"Readings will be scaled in {scale}");
 
                 foreach (var ch in EnumerateChannel(false, false))
@@ -169,7 +167,7 @@ namespace PS4000Lib
             _handle = (status == StatusCodes.PICO_OK) ? handle : throw new PicoException(status);
 
             OverSample = 1;
-            Scaling = Scale.mV;
+            Scale = Scale.mV;
             SetDeviceInfo();
 
             SetChannel();
@@ -214,15 +212,15 @@ namespace PS4000Lib
 
 
         #region mesure
-        public string CollectBlockImmediate()
+        public BlockData CollectBlockImmediate()
         {
             var status = SetTrigger(null, null, null, null, 0, 0, 0);
             return status == StatusCodes.PICO_OK ? BlockDataHandler() : throw new PicoException(status);
         }
 
-        private string BlockDataHandler()
+        private BlockData BlockDataHandler()
         {
-            var res = string.Empty;
+            BlockData res;
 
             var sampleCount = (uint)BufferSize;
             var minPinned = new PinnedArray<short>[_channelCount];
@@ -257,13 +255,16 @@ namespace PS4000Lib
             if (_ready)
             {
                 NativeMethods.GetValues(_handle, 0, ref sampleCount, 1, DownSamplingMode.None, 0, out short overflow);
-                res = FormatBlockData(Math.Min(sampleCount, (uint)BufferSize), timeInterval, minPinned, maxPinned);
+                res = new BlockData(this)
+                {
+                    SampleCount = Math.Min(sampleCount, (uint)BufferSize),
+                    TimeInterval = timeInterval,
+                    MinPinned = minPinned,
+                    MaxPinned = maxPinned
+                };
             }
             else
-                res = "data collection aborted.";
-
-            foreach (PinnedArray<short> p in minPinned) p?.Dispose();
-            foreach (PinnedArray<short> p in maxPinned) p?.Dispose();
+                res = null;
 
             return res;
         }
@@ -414,57 +415,8 @@ namespace PS4000Lib
             DeviceInfo = result.ToString();
         }
 
-        private string FormatBlockData(uint sampleCount, int timeInterval, PinnedArray<short>[] minPinned, PinnedArray<short>[] maxPinned)
-        {
-            var sb = new StringBuilder();
-
-            sb.AppendLine("For each of the active channels, results shown are....");
-            sb.AppendLine("Time interval (ns), Maximum Aggregated value ADC Count & mV, Minimum Aggregated value ADC Count & mV");
-            sb.AppendLine();
-
-            // Build Header
-            var heading = new[] { "Time", "Channel", "Max ADC", "Max mV", "Min ADC", "Min mV" };
-
-            sb.AppendFormat("{0, 10}", heading[0]);
-
-            foreach (var ch in EnumerateChannel(false, false))
-            {
-                if (ch.Enabled)
-                {
-                    sb.AppendFormat("{0,10} {1,10} {2,10} {3,10} {4,10}",
-                                    heading[1],
-                                    heading[2],
-                                    heading[3],
-                                    heading[4],
-                                    heading[5]);
-                }
-            }
-            sb.AppendLine();
-
-            // Build Body
-            for (int i = 0; i < sampleCount; i++)
-            {
-                sb.AppendFormat("{0,10}", (i * timeInterval));
-
-                foreach (var ch in EnumerateChannel(false, false))
-                {
-                    if (ch.Enabled)
-                    {
-                        sb.AppendFormat("{0,10} {1,10} {2,10} {3,10} {4,10}",
-                                        ch.Name,
-                                        maxPinned[ch.ChannelNum].Target[i],
-                                        ConvertADC2mV(maxPinned[ch.ChannelNum].Target[i], ch.Range),
-                                        minPinned[ch.ChannelNum].Target[i],
-                                        ConvertADC2mV(minPinned[ch.ChannelNum].Target[i], ch.Range));
-                    }
-                }
-                sb.AppendLine();
-            }
-            return sb.ToString();
-        }
-
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private int ConvertADC2mV(int raw, Range range) => (raw * InputRanges[(int)range]) / MaxValue;
+        internal int ConvertADC2mV(int raw, Range range) => (raw * InputRanges[(int)range]) / MaxValue;
 
         private uint ConvertSamplingInterval2Timebase(double samplingIntervalNanoSec)
         {
@@ -503,7 +455,7 @@ namespace PS4000Lib
             }
         }
 
-        private IEnumerable<Channel> EnumerateChannel(bool includeExtAux, bool includePwq)
+        internal IEnumerable<Channel> EnumerateChannel(bool includeExtAux, bool includePwq)
         {
             yield return ChannelA;
             yield return ChannelB;
