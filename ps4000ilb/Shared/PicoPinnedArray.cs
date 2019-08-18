@@ -17,7 +17,7 @@ namespace PicoPinnedArray
 {
     public class PinnedArray<T> : IDisposable
     {
-        GCHandle _pinnedHandle;
+        private GCHandle _pinnedHandle;
         private bool _disposed;
 
         public PinnedArray(int arraySize) : this(new T[arraySize]) { }
@@ -32,15 +32,14 @@ namespace PicoPinnedArray
             Dispose(false);
         }
 
-        public T[] Target
-        {
-            get { return (T[])_pinnedHandle.Target; }
-        }
+        public T[] Target => (T[])_pinnedHandle.Target;
 
-        public static implicit operator T[] (PinnedArray<T> a)
+        public static implicit operator T[](PinnedArray<T> a)
         {
             if (a == null)
+            {
                 return null;
+            }
 
             return (T[])a._pinnedHandle.Target;
         }
@@ -54,7 +53,9 @@ namespace PicoPinnedArray
         private void Dispose(bool disposing)
         {
             if (_disposed)
+            {
                 return;
+            }
 
             _disposed = true;
 

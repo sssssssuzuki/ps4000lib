@@ -5,7 +5,7 @@ namespace PS4000Lib
 {
     public class Channel
     {
-        public event Action SettingUpdate;
+        internal event Action SettingUpdate;
 
         public string Name { get; }
         public bool Enabled
@@ -27,6 +27,9 @@ namespace PS4000Lib
             }
         }
         public short TriggerVoltageMV { get; set; }
+        public ThresholdMode TriggerMode { get; set; }
+        public ThresholdDirection TriggerDirection { get; set; }
+
         public CouplingMode Coupling
         {
             get => _coupling;
@@ -51,7 +54,11 @@ namespace PS4000Lib
             Name = name;
             _enabled = true;
             _range = Range.Range_5V;
+
             TriggerVoltageMV = 0;
+            TriggerMode = ThresholdMode.Level;
+            TriggerDirection = ThresholdDirection.Rising;
+
             _coupling = CouplingMode.DC;
         }
     }

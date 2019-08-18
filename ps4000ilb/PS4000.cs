@@ -41,7 +41,7 @@ namespace PS4000Lib
         public const int MAX_CHANNELS = 4;
         public const int QUAD_SCOPE = 4;
         public const int DUAL_SCOPE = 2;
-        readonly IReadOnlyList<ushort> InputRanges = new ushort[] { 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000 };
+        private readonly IReadOnlyList<ushort> InputRanges = new ushort[] { 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000 };
         #endregion
 
         #region field
@@ -52,6 +52,8 @@ namespace PS4000Lib
         private int _maxSamples;
         private int _channelCount;
         private bool _ready;
+
+        private List<TriggerConditions> _conditions;
 
         private NativeMethods.ps4000BlockReady _callbackDelegate;
         #endregion
@@ -76,23 +78,14 @@ namespace PS4000Lib
 
         public double SamplingRateHz
         {
-            get
-            {
-                return 1_000_000_000.0 / SamplingIntervalNanoSec;
-            }
-            set
-            {
-                SamplingIntervalNanoSec = 1_000_000_000.0 / value;
-            }
+            get => 1_000_000_000.0 / SamplingIntervalNanoSec;
+            set => SamplingIntervalNanoSec = 1_000_000_000.0 / value;
 
         }
 
         public double SamplingIntervalNanoSec
         {
-            get
-            {
-                return _timeInterval;
-            }
+            get => _timeInterval;
             set
             {
                 Timebase = ConvertSamplingInterval2Timebase(value);
@@ -101,15 +94,14 @@ namespace PS4000Lib
         }
         public uint Timebase
         {
-            get
-            {
-                return _timebase;
-            }
+            get => _timebase;
             set
             {
                 _timebase = value;
                 while (NativeMethods.GetTimebase(_handle, _timebase, BufferSize, out _, OverSample, out _maxSamples, 0) != 0)
+                {
                     _timebase++;
+                }
             }
         }
         public short OverSample { get; set; }
@@ -120,14 +112,14 @@ namespace PS4000Lib
         {
             get
             {
-                var res = new StringBuilder();
+                StringBuilder res = new StringBuilder();
 
-                var scale = Scale == Scale.mV ? "mV" : "ADC counts";
+                string scale = Scale == Scale.mV ? "mV" : "ADC counts";
                 res.Append($"Readings will be scaled in {scale}");
 
-                foreach (var ch in EnumerateChannel(false, false))
+                foreach (Channel ch in EnumerateChannel(false, false))
                 {
-                    var voltage = InputRanges[(int)ch.Range];
+                    ushort voltage = InputRanges[(int)ch.Range];
                     res.Append($"\nChannel {ch.Name} Voltage Range = ");
                     res.Append(voltage < 1000 ? $"{voltage}mV" : $"{voltage / 1000}V");
                 }
@@ -137,6 +129,7 @@ namespace PS4000Lib
         }
 
         public string DeviceInfo { get; private set; }
+        public Pwq Pwq { get; set; } = null;
         #endregion
 
         #region ctor
@@ -150,20 +143,22 @@ namespace PS4000Lib
             ChannelAux = new Channel(ChannelType.Aux, "Aux");
             ChannelPwq = new Channel(ChannelType.None, "Pwq");
 
-            foreach (var ch in EnumerateChannel(false, false))
+            foreach (Channel ch in EnumerateChannel(false, false))
+            {
                 ch.SettingUpdate += SetChannel;
+            }
         }
 
         ~PS4000()
         {
-            this.Dispose(false);
+            Dispose(false);
         }
         #endregion
 
         #region control
         public void Open()
         {
-            var status = NativeMethods.OpenUnit(out short handle);
+            short status = NativeMethods.OpenUnit(out short handle);
             _handle = (status == StatusCodes.PICO_OK) ? handle : throw new PicoException(status);
 
             OverSample = 1;
@@ -173,30 +168,35 @@ namespace PS4000Lib
             SetChannel();
             Timebase = 0u;
 
-            this.IsOpen = true;
+            IsOpen = true;
         }
 
         public void Close()
         {
-            if (this.IsOpen)
+            if (IsOpen)
             {
-                foreach (var ch in EnumerateChannel(false, false))
+                foreach (Channel ch in EnumerateChannel(false, false))
+                {
                     ch.SettingUpdate -= SetChannel;
+                }
 
                 NativeMethods.CloseUnit(_handle);
-                this.IsOpen = false;
+                IsOpen = false;
             }
         }
 
         public void Dispose()
         {
-            this.Dispose(true);
+            Dispose(true);
             GC.SuppressFinalize(this);
         }
 
         protected virtual void Dispose(bool disposing)
         {
-            if (_disposed) return;
+            if (_disposed)
+            {
+                return;
+            }
 
             if (disposing)
             {
@@ -210,11 +210,20 @@ namespace PS4000Lib
         }
         #endregion
 
-
         #region mesure
         public BlockData CollectBlockImmediate()
         {
-            var status = SetTrigger(null, null, null, null, 0, 0, 0);
+            short status = SetTrigger(null, null, null, null, 0, 0, 0);
+            return status == StatusCodes.PICO_OK ? BlockDataHandler() : throw new PicoException(status);
+        }
+
+        public BlockData CollectBlockTriggered()
+        {
+            TriggerChannelProperties[] details = GetTriggerChannelProperties();
+            TriggerConditions[] conds = _conditions.ToArray();
+            ThresholdDirection[] dirs = GetTriggerThresholdDirections();
+
+            short status = SetTrigger(details, conds, dirs, Pwq, 0, 0, 0);
             return status == StatusCodes.PICO_OK ? BlockDataHandler() : throw new PicoException(status);
         }
 
@@ -222,14 +231,14 @@ namespace PS4000Lib
         {
             BlockData res;
 
-            var sampleCount = (uint)BufferSize;
-            var minPinned = new PinnedArray<short>[_channelCount];
-            var maxPinned = new PinnedArray<short>[_channelCount];
+            uint sampleCount = (uint)BufferSize;
+            PinnedArray<short>[] minPinned = new PinnedArray<short>[_channelCount];
+            PinnedArray<short>[] maxPinned = new PinnedArray<short>[_channelCount];
 
-            foreach (var ch in EnumerateChannel(false, false))
+            foreach (Channel ch in EnumerateChannel(false, false))
             {
-                var minBuffers = new short[sampleCount];
-                var maxBuffers = new short[sampleCount];
+                short[] minBuffers = new short[sampleCount];
+                short[] maxBuffers = new short[sampleCount];
                 minPinned[ch.ChannelNum] = new PinnedArray<short>(minBuffers);
                 maxPinned[ch.ChannelNum] = new PinnedArray<short>(maxBuffers);
                 NativeMethods.SetDataBuffers(_handle, ch.Type, maxBuffers, minBuffers, (int)sampleCount);
@@ -239,7 +248,9 @@ namespace PS4000Lib
             int timeInterval;
 
             while (NativeMethods.GetTimebase(_handle, _timebase, (int)sampleCount, out timeInterval, OverSample, out int maxSamples, 0) != 0)
+            {
                 _timebase++;
+            }
 
             /* Start it collecting, then wait for completion*/
             _ready = false;
@@ -248,7 +259,9 @@ namespace PS4000Lib
             NativeMethods.RunBlock(_handle, 0, (int)sampleCount, _timebase, OverSample, out int timeIndisposed, 0, _callbackDelegate, IntPtr.Zero);
 
             while (!_ready)
+            {
                 Thread.Sleep(100);
+            }
 
             NativeMethods.Stop(_handle);
 
@@ -264,13 +277,58 @@ namespace PS4000Lib
                 };
             }
             else
+            {
                 res = null;
+            }
 
             return res;
         }
         #endregion
 
         #region setting
+        public void ResetTriggerConditions()
+        {
+            _conditions = new List<TriggerConditions>();
+        }
+
+        public void AddTriggerConditions(TriggerConditions cond)
+        {
+            if (_conditions == null)
+            {
+                ResetTriggerConditions();
+            }
+
+            _conditions.Add(cond);
+        }
+
+        private TriggerChannelProperties[] GetTriggerChannelProperties()
+        {
+            List<TriggerChannelProperties> props = new List<TriggerChannelProperties>();
+            foreach (Channel ch in EnumerateChannel(false, false))
+            {
+                short vol = ConvertmV2ADC(ch.TriggerVoltageMV, ch.Range);
+                props.Add(new TriggerChannelProperties(
+                                                vol,
+                                                256 * 10,
+                                                vol,
+                                                256 * 10,
+                                                ch.Type,
+                                                ch.TriggerMode));
+            }
+            return props.ToArray();
+        }
+
+        private ThresholdDirection[] GetTriggerThresholdDirections()
+        {
+            ThresholdDirection[] dirs = new ThresholdDirection[6];
+            foreach (Channel ch in EnumerateChannel(true, false))
+            {
+                dirs[ch.ChannelNum] = ch.TriggerDirection;
+            }
+
+            return dirs;
+        }
+
         private short SetTrigger(
                         TriggerChannelProperties[] channelProperties,
                         TriggerConditions[] triggerConditions,
@@ -280,20 +338,31 @@ namespace PS4000Lib
                         short auxOutputEnabled,
                         int autoTriggerMs)
         {
-            var nChannelProperties = (short)(channelProperties == null ? 0 : channelProperties.Length);
-            var nTriggerConditions = (short)(triggerConditions == null ? 0 : triggerConditions.Length);
+            short nChannelProperties = (short)(channelProperties == null ? 0 : channelProperties.Length);
+            short nTriggerConditions = (short)(triggerConditions == null ? 0 : triggerConditions.Length);
 
             if (directions == null)
+            {
                 directions = Enumerable.Repeat(ThresholdDirection.None, 6).ToArray();
-            if (pwq == null)
-                pwq = new Pwq(null, 0, ThresholdDirection.None, 0, 0, PulseWidthType.None);
+            }
 
-            var status = NativeMethods.SetTriggerChannelProperties(_handle, channelProperties, nChannelProperties,
+            if (pwq == null)
+            {
+                pwq = new Pwq(null, 0, ThresholdDirection.None, 0, 0, PulseWidthType.None);
+            }
+
+            short status = NativeMethods.SetTriggerChannelProperties(_handle, channelProperties, nChannelProperties,
                                                             auxOutputEnabled, autoTriggerMs);
-            if (status != StatusCodes.PICO_OK) return status;
+            if (status != StatusCodes.PICO_OK)
+            {
+                return status;
+            }
 
             status = NativeMethods.SetTriggerChannelConditions(_handle, triggerConditions, nTriggerConditions);
-            if (status != StatusCodes.PICO_OK) return status;
+            if (status != StatusCodes.PICO_OK)
+            {
+                return status;
+            }
 
             status = NativeMethods.SetTriggerChannelDirections(_handle,
                                                               directions[ChannelA.ChannelNum],
@@ -302,10 +371,16 @@ namespace PS4000Lib
                                                               directions[ChannelD.ChannelNum],
                                                               directions[ChannelExt.ChannelNum],
                                                               directions[ChannelAux.ChannelNum]);
-            if (status != StatusCodes.PICO_OK) return status;
+            if (status != StatusCodes.PICO_OK)
+            {
+                return status;
+            }
 
             status = NativeMethods.SetTriggerDelay(_handle, delay);
-            if (status != StatusCodes.PICO_OK) return status;
+            if (status != StatusCodes.PICO_OK)
+            {
+                return status;
+            }
 
             status = NativeMethods.SetPulseWidthQualifier(_handle, pwq.conditions,
                                                     pwq.nConditions, pwq.direction,
@@ -315,7 +390,7 @@ namespace PS4000Lib
         #endregion
 
         #region callback
-        void BlockCallback(short handle, short status, IntPtr pVoid)
+        private void BlockCallback(short handle, short status, IntPtr pVoid)
         {
             _ready = true;
         }
@@ -324,21 +399,19 @@ namespace PS4000Lib
         #region private methods
         private void SetChannel()
         {
-            foreach (var ch in EnumerateChannel(false, false))
+            foreach (Channel ch in EnumerateChannel(false, false))
             {
                 NativeMethods.SetChannel(_handle, ch.Type,
                                   (short)(ch.Enabled ? 1 : 0),
                                   (short)(ch.Coupling == CouplingMode.DC ? 1 : 0),
                                   ch.Range);
             }
-
-            Console.WriteLine("UPDATE");
         }
 
         private void SetDeviceInfo()
         {
-            var variant = 0;
-            var description = new[]{
+            int variant = 0;
+            string[] description = new[]{
                            "Driver Version    ",
                            "USB Version       ",
                            "Hardware Version  ",
@@ -347,8 +420,8 @@ namespace PS4000Lib
                            "Cal Date          ",
                            "Kernel Ver        "
                          };
-            var line = new StringBuilder(80);
-            var result = new StringBuilder();
+            StringBuilder line = new StringBuilder(80);
+            StringBuilder result = new StringBuilder();
 
             if (_handle >= 0)
             {
@@ -362,50 +435,54 @@ namespace PS4000Lib
                         variant = Convert.ToInt16(line.ToString());
                     }
 
-                    if (i != 0) result.Append("\n");
+                    if (i != 0)
+                    {
+                        result.Append("\n");
+                    }
+
                     result.Append($"{description[i]}: {line}");
                 }
 
                 switch (variant)
                 {
                     case (int)Model.PS4223:
-                        this.Model = Model.PS4223;
+                        Model = Model.PS4223;
                         MinRange = Range.Range_50MV;
                         MaxRange = Range.Range_100V;
                         _channelCount = DUAL_SCOPE;
                         break;
                     case (int)Model.PS4224:
-                        this.Model = Model.PS4224;
+                        Model = Model.PS4224;
                         MinRange = Range.Range_50MV;
                         MaxRange = Range.Range_20V;
                         _channelCount = DUAL_SCOPE;
                         break;
                     case (int)Model.PS4423:
-                        this.Model = Model.PS4423;
+                        Model = Model.PS4423;
                         MinRange = Range.Range_50MV;
                         MaxRange = Range.Range_100V;
                         _channelCount = QUAD_SCOPE;
                         break;
                     case (int)Model.PS4424:
-                        this.Model = Model.PS4424;
+                        Model = Model.PS4424;
                         MinRange = Range.Range_50MV;
                         MaxRange = Range.Range_20V;
                         _channelCount = QUAD_SCOPE;
                         break;
                     case (int)Model.PS4226:
-                        this.Model = Model.PS4226;
+                        Model = Model.PS4226;
                         MinRange = Range.Range_50MV;
                         MaxRange = Range.Range_20V;
                         _channelCount = DUAL_SCOPE;
                         break;
                     case (int)Model.PS4227:
-                        this.Model = Model.PS4227;
+                        Model = Model.PS4227;
                         MinRange = Range.Range_50MV;
                         MaxRange = Range.Range_20V;
                         _channelCount = DUAL_SCOPE;
                         break;
                     case (int)Model.PS4262:
-                        this.Model = Model.PS4262;
+                        Model = Model.PS4262;
                         MinRange = Range.Range_10MV;
                         MaxRange = Range.Range_20V;
                         _channelCount = DUAL_SCOPE;
@@ -416,11 +493,20 @@ namespace PS4000Lib
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal int ConvertADC2mV(int raw, Range range) => (raw * InputRanges[(int)range]) / MaxValue;
+        internal int ConvertADC2mV(short raw, Range range)
+        {
+            return (raw * InputRanges[(int)range]) / MaxValue;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal short ConvertmV2ADC(int raw, Range range)
+        {
+            return (short)((raw * MaxValue) / InputRanges[(int)range]);
+        }
 
         private uint ConvertSamplingInterval2Timebase(double samplingIntervalNanoSec)
         {
-            switch (this.Model)
+            switch (Model)
             {
                 case Model.PS4223:
                 case Model.PS4224:
@@ -433,12 +519,12 @@ namespace PS4000Lib
                 case Model.PS4262:
                     return (uint)(samplingIntervalNanoSec / 1_000_000_000 * 10_000_000) - 1u;
                 default:
-                    throw new NotSupportedException(nameof(this.Model));
+                    throw new NotSupportedException(nameof(Model));
             }
         }
         private double ConvertTimebase2SamplingInterval(uint timebase)
         {
-            switch (this.Model)
+            switch (Model)
             {
                 case Model.PS4223:
                 case Model.PS4224:
@@ -451,7 +537,7 @@ namespace PS4000Lib
                 case Model.PS4262:
                     return (timebase + 1) * 100.0;
                 default:
-                    throw new NotSupportedException(nameof(this.Model));
+                    throw new NotSupportedException(nameof(Model));
             }
         }
 

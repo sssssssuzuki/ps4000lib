@@ -24,12 +24,12 @@ namespace PS4000Lib
             ChannelType channel,
             ThresholdMode thresholdMode)
         {
-            this.ThresholdMajor = thresholdMajor;
-            this.HysteresisMajor = hysteresisMajor;
-            this.ThresholdMinor = thresholdMinor;
-            this.HysteresisMinor = hysteresisMinor;
-            this.Channel = channel;
-            this.ThresholdMode = thresholdMode;
+            ThresholdMajor = thresholdMajor;
+            HysteresisMajor = hysteresisMajor;
+            ThresholdMinor = thresholdMinor;
+            HysteresisMinor = hysteresisMinor;
+            Channel = channel;
+            ThresholdMode = thresholdMode;
         }
     }
 
@@ -53,13 +53,13 @@ namespace PS4000Lib
             TriggerState aux,
             TriggerState pwq)
         {
-            this.ChannelA = channelA;
-            this.ChannelB = channelB;
-            this.ChannelC = channelC;
-            this.ChannelD = channelD;
-            this.External = external;
-            this.Aux = aux;
-            this.Pwq = pwq;
+            ChannelA = channelA;
+            ChannelB = channelB;
+            ChannelC = channelC;
+            ChannelD = channelD;
+            External = external;
+            Aux = aux;
+            Pwq = pwq;
         }
     }
 
@@ -81,12 +81,12 @@ namespace PS4000Lib
             TriggerState external,
             TriggerState aux)
         {
-            this.ChannelA = channelA;
-            this.ChannelB = channelB;
-            this.ChannelC = channelC;
-            this.ChannelD = channelD;
-            this.External = external;
-            this.Aux = aux;
+            ChannelA = channelA;
+            ChannelB = channelB;
+            ChannelC = channelC;
+            ChannelD = channelD;
+            External = external;
+            Aux = aux;
         }
     }
     #endregion
