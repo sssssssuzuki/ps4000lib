@@ -91,7 +91,7 @@ namespace PS4000Lib
             }
 
             // Build Body
-            for (int i = 0; i < SampleCount; i++)
+            for (long i = 0; i < SampleCount; i++)
             {
                 sb.AppendFormat("{0,10}", (i * TimeInterval));
                 sb.Append(Delimiter);
