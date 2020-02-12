@@ -27,9 +27,7 @@ namespace PS4000Lib
             }
         }
         public short TriggerVoltageMV { get; set; }
-        public ThresholdMode TriggerMode { get; set; }
-        public ThresholdDirection TriggerDirection { get; set; }
-
+        public int Attenuation { get; set; }
         public CouplingMode Coupling
         {
             get => _coupling;
@@ -39,6 +37,9 @@ namespace PS4000Lib
                 SettingUpdate?.Invoke();
             }
         }
+
+        public ThresholdMode TriggerMode { get; set; }
+        public ThresholdDirection TriggerDirection { get; set; }
 
         internal ChannelType Type;
         internal int ChannelNum;
@@ -50,6 +51,7 @@ namespace PS4000Lib
         {
             Type = type;
             ChannelNum = (int)type;
+            Attenuation = 1;
 
             Name = name;
             _enabled = true;

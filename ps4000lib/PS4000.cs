@@ -7,6 +7,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace PS4000Lib
 {
@@ -41,7 +42,7 @@ namespace PS4000Lib
         public const int MAX_CHANNELS = 4;
         public const int QUAD_SCOPE = 4;
         public const int DUAL_SCOPE = 2;
-        private readonly IReadOnlyList<ushort> InputRanges = new ushort[] { 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000 };
+        private static readonly IReadOnlyList<ushort> InputRanges = new ushort[] { 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000 };
         #endregion
 
         #region field
@@ -211,23 +212,39 @@ namespace PS4000Lib
         #endregion
 
         #region mesure
+        public async Task<BlockData> CollectBlockImmediateAsync()
+        {
+            return await Task.Run(() =>
+            {
+                return CollectBlockImmediate();
+            });
+        }
+
         public BlockData CollectBlockImmediate()
         {
             short status = SetTrigger(null, null, null, null, 0, 0, 0);
-            return status == StatusCodes.PICO_OK ? BlockDataHandler() : throw new PicoException(status);
+            return status == StatusCodes.PICO_OK ? BlockDataHandler(0) : throw new PicoException(status);
         }
 
-        public BlockData CollectBlockTriggered()
+        public async Task<BlockData> CollectBlockTriggeredAsync(int noOfPreTriggerSamples = 0)
+        {
+            return await Task.Run(() =>
+            {
+                return CollectBlockTriggered(noOfPreTriggerSamples);
+            });
+        }
+
+        public BlockData CollectBlockTriggered(int noOfPreTriggerSamples = 0)
         {
             TriggerChannelProperties[] details = GetTriggerChannelProperties();
             TriggerConditions[] conds = _conditions.ToArray();
             ThresholdDirection[] dirs = GetTriggerThresholdDirections();
 
             short status = SetTrigger(details, conds, dirs, Pwq, 0, 0, 0);
-            return status == StatusCodes.PICO_OK ? BlockDataHandler() : throw new PicoException(status);
+            return status == StatusCodes.PICO_OK ? BlockDataHandler(noOfPreTriggerSamples) : throw new PicoException(status);
         }
 
-        private BlockData BlockDataHandler()
+        private BlockData BlockDataHandler(int noOfPreTriggerSamples)
         {
             BlockData res;
 
@@ -256,7 +273,7 @@ namespace PS4000Lib
             _ready = false;
             _callbackDelegate = BlockCallback;
 
-            NativeMethods.RunBlock(_handle, 0, (int)sampleCount, _timebase, OverSample, out int timeIndisposed, 0, _callbackDelegate, IntPtr.Zero);
+            NativeMethods.RunBlock(_handle, noOfPreTriggerSamples, (int)sampleCount, _timebase, OverSample, out int timeIndisposed, 0, _callbackDelegate, IntPtr.Zero);
 
             while (!_ready)
             {
@@ -306,12 +323,12 @@ namespace PS4000Lib
             List<TriggerChannelProperties> props = new List<TriggerChannelProperties>();
             foreach (Channel ch in EnumerateChannel(false, false))
             {
-                short vol = ConvertmV2ADC(ch.TriggerVoltageMV, ch.Range);
+                short vol = ConvertmV2ADC(ch.TriggerVoltageMV / ch.Attenuation, ch.Range);
                 props.Add(new TriggerChannelProperties(
                                                 vol,
-                                                256 * 10,
+                                                (ushort)(256 * 10 / ch.Attenuation),
                                                 vol,
-                                                256 * 10,
+                                                (ushort)(256 * 10 / ch.Attenuation),
                                                 ch.Type,
                                                 ch.TriggerMode));
             }
@@ -493,13 +510,13 @@ namespace PS4000Lib
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal int ConvertADC2mV(short raw, Range range)
+        internal static int ConvertADC2mV(short raw, Range range)
         {
             return (raw * InputRanges[(int)range]) / MaxValue;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal short ConvertmV2ADC(int raw, Range range)
+        internal static short ConvertmV2ADC(int raw, Range range)
         {
             return (short)((raw * MaxValue) / InputRanges[(int)range]);
         }

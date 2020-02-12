@@ -2,12 +2,12 @@
 
 namespace ps4000lib.example
 {
-    class Program
+    internal class Program
     {
-        static void Main()
+        private static void Main()
         {
             BlockImmediateSample.Run();
-            BlockTriggeredSample.Run();
+            //BlockTriggeredSample.Run();
         }
     }
 }

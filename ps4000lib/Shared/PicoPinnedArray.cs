@@ -15,7 +15,7 @@ using System.Runtime.InteropServices;
 
 namespace PicoPinnedArray
 {
-    public class PinnedArray<T> : IDisposable
+    public sealed class PinnedArray<T> : IDisposable
     {
         private GCHandle _pinnedHandle;
         private bool _disposed;

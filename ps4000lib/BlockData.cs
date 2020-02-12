@@ -104,9 +104,9 @@ namespace PS4000Lib
                             string.Join(Delimiter,
                                 string.Format("{0, 10}", ch.Name),
                                 string.Format("{0, 10}", MaxPinned[ch.ChannelNum].Target[i]),
-                                string.Format("{0, 10}", _ps4000.ConvertADC2mV(MaxPinned[ch.ChannelNum].Target[i], ch.Range)),
+                                string.Format("{0, 10}", PS4000.ConvertADC2mV(MaxPinned[ch.ChannelNum].Target[i], ch.Range) * ch.Attenuation),
                                 string.Format("{0, 10}", MinPinned[ch.ChannelNum].Target[i]),
-                                string.Format("{0, 10}", _ps4000.ConvertADC2mV(MinPinned[ch.ChannelNum].Target[i], ch.Range))));
+                                string.Format("{0, 10}", PS4000.ConvertADC2mV(MinPinned[ch.ChannelNum].Target[i], ch.Range) * ch.Attenuation)));
                     }
                 }
 

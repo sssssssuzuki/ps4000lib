@@ -1,5 +1,6 @@
 ﻿namespace PS4000Lib
 {
+#pragma warning disable CA1712 // Do not prefix enum values with type name
     public enum Range : int
     {
         Range_10MV,
@@ -16,4 +17,5 @@
         Range_50V,
         Range_100V,
     }
+#pragma warning restore CA1712 // Do not prefix enum values with type name
 }

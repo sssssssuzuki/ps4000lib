@@ -1,9 +1,9 @@
 ﻿using PicoStatus;
 using System;
+using System.Runtime.Serialization;
 
 namespace PS4000Lib
 {
-    [Serializable]
     public class PicoException : Exception
     {
         public PicoException() { }
