@@ -16,8 +16,8 @@ namespace ps4000lib.example.Sample
                 ps4000.SamplingRateHz = 10_000;
                 ps4000.BufferSize = 10;
 
-                ps4000.ChannelA.Range = Range.Range_5V;
-                ps4000.ChannelB.Range = Range.Range_5V;
+                ps4000.ChannelA.Range = PS4000Lib.Range.Range_5V;
+                ps4000.ChannelB.Range = PS4000Lib.Range.Range_5V;
                 ps4000.ChannelA.Attenuation = 10;
                 ps4000.ChannelB.Attenuation = 10;
 
@@ -26,7 +26,7 @@ namespace ps4000lib.example.Sample
                 Console.WriteLine(blockdata);
 
                 BlockData.Delimiter = ",";
-                BlockData.IgnoreHeader = true;
+                BlockData.ShowADC =false;
 
                 Console.WriteLine("******************************************************************************");
                 Console.WriteLine(blockdata);
@@ -34,7 +34,7 @@ namespace ps4000lib.example.Sample
                 ps4000.ChannelB.Enabled = false;
                 ps4000.BufferSize = 20;
                 ps4000.SamplingRateHz = 20_000;
-                ps4000.ChannelA.Range = Range.Range_20V;
+                ps4000.ChannelA.Range = PS4000Lib.Range.Range_20V;
 
                 Console.WriteLine("******************************************************************************");
                 Console.WriteLine(ps4000.CollectBlockImmediate());

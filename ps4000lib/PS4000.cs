@@ -131,6 +131,9 @@ namespace PS4000Lib
 
         public string DeviceInfo { get; private set; }
         public Pwq Pwq { get; set; } = null;
+
+        // Not suppoerted yet
+        public uint DownSampleRatio { get; set; } = 1;
         #endregion
 
         #region ctor
@@ -284,7 +287,7 @@ namespace PS4000Lib
 
             if (_ready)
             {
-                NativeMethods.GetValues(_handle, 0, ref sampleCount, 1, DownSamplingMode.None, 0, out short overflow);
+                NativeMethods.GetValues(_handle, 0, ref sampleCount, DownSampleRatio, DownSamplingMode.None, 0, out short overflow);
                 res = new BlockData(this)
                 {
                     SampleCount = Math.Min(sampleCount, (uint)BufferSize),
@@ -510,9 +513,9 @@ namespace PS4000Lib
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static int ConvertADC2mV(short raw, Range range)
+        internal static int ConvertADC2mV(short raw, Range range, int attenuation)
         {
-            return (raw * InputRanges[(int)range]) / MaxValue;
+            return (attenuation * raw * InputRanges[(int)range]) / MaxValue;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

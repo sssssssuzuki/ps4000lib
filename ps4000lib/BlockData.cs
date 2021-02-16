@@ -1,5 +1,7 @@
 ﻿using PicoPinnedArray;
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 
 namespace PS4000Lib
@@ -7,16 +9,18 @@ namespace PS4000Lib
     public class BlockData : IDisposable
     {
         private readonly PS4000 _ps4000;
-        private string _data;
+        private string _data = null;
 
-        private static bool _changed;
-        private static bool _ignoreHeader;
+        private static bool _changed = true;
+        private static bool _ignoreHeader = false;
         private static string _delimiter = " ";
 
         internal PinnedArray<short>[] MinPinned;
         internal PinnedArray<short>[] MaxPinned;
         internal uint SampleCount;
         internal int TimeInterval;
+
+        private static bool _showADC = true;
 
         public string Data
         {
@@ -41,6 +45,7 @@ namespace PS4000Lib
                 _ignoreHeader = value;
             }
         }
+
         public static string Delimiter
         {
             get => _delimiter;
@@ -48,6 +53,16 @@ namespace PS4000Lib
             {
                 _changed = true;
                 _delimiter = value;
+            }
+        }
+
+        public static bool ShowADC
+        {
+            get => _showADC;
+            set
+            {
+                _changed = true;
+                _showADC = value;
             }
         }
 
@@ -68,23 +83,25 @@ namespace PS4000Lib
             // Build Header
             if (!IgnoreHeader)
             {
-                sb.AppendLine("For each of the active channels, results shown are....");
-                sb.AppendLine("Time interval (ns), Maximum Aggregated value ADC Count & mV, Minimum Aggregated value ADC Count & mV");
-                sb.AppendLine();
-
-                string[] heading = new[] { "Time", "Channel", "Max ADC", "Max mV", "Min ADC", "Min mV" };
-                sb.AppendFormat("{0, 10}", heading[0]);
-                foreach (Channel ch in _ps4000.EnumerateChannel(false, false))
+                List<string> header = new List<string>();
+                header.Add("Time [ns]");
+                if (_showADC) header.Add("Max [ADC]");
+                header.Add("Max [mV]");
+                if (_ps4000.DownSampleRatio > 1)
                 {
-                    if (ch.Enabled)
-                    {
-                        sb.AppendFormat("{0,10} {1,10} {2,10} {3,10} {4,10}",
-                                        heading[1],
-                                        heading[2],
-                                        heading[3],
-                                        heading[4],
-                                        heading[5]);
-                    }
+                    if (_showADC)
+                        header.Add("Min [ADC]");
+                    header.Add("Min [mV]");
+                }
+
+                sb.AppendFormat("{0, 12}", header[0]);
+                foreach (Channel ch in _ps4000.EnumerateChannel(false, false).Where(ch => ch.Enabled))
+                {
+                    sb.Append(Delimiter);
+                    sb.AppendJoin(
+                            Delimiter,
+                            header.Skip(1).Select(s => string.Format("{0,12}", $"{ch.Name} {s}"))
+                        );
                 }
 
                 sb.AppendLine();
@@ -93,23 +110,29 @@ namespace PS4000Lib
             // Build Body
             for (long i = 0; i < SampleCount; i++)
             {
-                sb.AppendFormat("{0,10}", (i * TimeInterval));
-                sb.Append(Delimiter);
-
-                foreach (Channel ch in _ps4000.EnumerateChannel(false, false))
+                sb.AppendFormat("{0,12}", (i * TimeInterval));
+                foreach (Channel ch in _ps4000.EnumerateChannel(false, false).Where(ch => ch.Enabled))
                 {
-                    if (ch.Enabled)
+                    if (_showADC)
                     {
-                        sb.Append(
-                            string.Join(Delimiter,
-                                string.Format("{0, 10}", ch.Name),
-                                string.Format("{0, 10}", MaxPinned[ch.ChannelNum].Target[i]),
-                                string.Format("{0, 10}", PS4000.ConvertADC2mV(MaxPinned[ch.ChannelNum].Target[i], ch.Range) * ch.Attenuation),
-                                string.Format("{0, 10}", MinPinned[ch.ChannelNum].Target[i]),
-                                string.Format("{0, 10}", PS4000.ConvertADC2mV(MinPinned[ch.ChannelNum].Target[i], ch.Range) * ch.Attenuation)));
+                        sb.Append(Delimiter);
+                        sb.AppendFormat("{0, 12}", MaxPinned[ch.ChannelNum].Target[i]);
+                    }
+
+                    sb.Append(Delimiter);
+                    sb.AppendFormat("{0, 12}", PS4000.ConvertADC2mV(MaxPinned[ch.ChannelNum].Target[i], ch.Range, ch.Attenuation));
+
+                    if (_ps4000.DownSampleRatio > 1)
+                    {
+                        if (_showADC)
+                        {
+                            sb.Append(Delimiter);
+                            sb.AppendFormat("{0, 12}", MinPinned[ch.ChannelNum].Target[i]);
+                        }
+                        sb.Append(Delimiter);
+                        sb.AppendFormat("{0, 12}", PS4000.ConvertADC2mV(MinPinned[ch.ChannelNum].Target[i], ch.Range, ch.Attenuation));
                     }
                 }
-
                 sb.AppendLine();
             }
             return sb.ToString();

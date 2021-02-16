@@ -3,7 +3,6 @@
     public enum ThresholdDirection : int
     {
         // Values for level threshold mode
-        //
         Above,
         Below,
         Rising,
@@ -11,7 +10,6 @@
         RisingOrFalling,
 
         // Values for window threshold mode
-        //
         Inside = Above,
         Outside = Below,
         Enter = Rising,

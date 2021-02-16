@@ -14,7 +14,7 @@ namespace ps4000lib.example.Sample
             {
                 ps4000.Open();
 
-                ps4000.ChannelA.Range = Range.Range_5V;
+                ps4000.ChannelA.Range = PS4000Lib.Range.Range_5V;
                 ps4000.ChannelA.Attenuation = 10;
 
                 ps4000.ChannelB.Enabled = false;
