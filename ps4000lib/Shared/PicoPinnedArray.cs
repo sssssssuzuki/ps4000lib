@@ -11,9 +11,10 @@
  ****************************************************************************/
 
 using System;
+using System.Collections.Generic;
 using System.Runtime.InteropServices;
 
-namespace PicoPinnedArray
+namespace PS4000Lib.Shared
 {
     public sealed class PinnedArray<T> : IDisposable
     {
@@ -22,7 +23,7 @@ namespace PicoPinnedArray
 
         public PinnedArray(int arraySize) : this(new T[arraySize]) { }
 
-        public PinnedArray(T[] array)
+        public PinnedArray(IList<T> array)
         {
             _pinnedHandle = GCHandle.Alloc(array, GCHandleType.Pinned);
         }
@@ -36,12 +37,7 @@ namespace PicoPinnedArray
 
         public static implicit operator T[](PinnedArray<T> a)
         {
-            if (a == null)
-            {
-                return null;
-            }
-
-            return (T[])a._pinnedHandle.Target;
+            return (T[]) a?._pinnedHandle.Target;
         }
 
         public void Dispose()

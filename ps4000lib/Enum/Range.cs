@@ -1,21 +1,34 @@
-﻿namespace PS4000Lib
+﻿/*
+ * File: Range.cs
+ * Project: Enum
+ * Created Date: 19/04/2021
+ * Author: Shun Suzuki
+ * -----
+ * Last Modified: 19/04/2021
+ * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
+ * -----
+ * Copyright (c) 2021 Hapis Lab. All rights reserved.
+ * 
+ */
+
+namespace PS4000Lib.Enum
 {
 #pragma warning disable CA1712 // Do not prefix enum values with type name
-    public enum Range : int
+    public enum Range
     {
-        Range_10MV,
-        Range_20MV,
-        Range_50MV,
-        Range_100MV,
-        Range_200MV,
-        Range_500MV,
-        Range_1V,
-        Range_2V,
-        Range_5V,
-        Range_10V,
-        Range_20V,
-        Range_50V,
-        Range_100V,
+        Range10MV,
+        Range20MV,
+        Range50MV,
+        Range100MV,
+        Range200MV,
+        Range500MV,
+        Range1V,
+        Range2V,
+        Range5V,
+        Range10V,
+        Range20V,
+        Range50V,
+        Range100V
     }
 #pragma warning restore CA1712 // Do not prefix enum values with type name
 }

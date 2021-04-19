@@ -1,7 +1,21 @@
-﻿using PS4000Lib.Enum;
+﻿/*
+ * File: NativeMethods.cs
+ * Project: ps4000lib
+ * Created Date: 19/04/2021
+ * Author: Shun Suzuki
+ * -----
+ * Last Modified: 19/04/2021
+ * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
+ * -----
+ * Copyright (c) 2021 Hapis Lab. All rights reserved.
+ * 
+ */
+
+using PS4000Lib.Enum;
 using System;
 using System.Runtime.InteropServices;
 using System.Text;
+using Range = PS4000Lib.Enum.Range;
 
 namespace PS4000Lib
 {
@@ -94,13 +108,13 @@ namespace PS4000Lib
     internal class NativeMethods
     {
         #region const
-        private const string _DRIVER_FILENAME = "ps4000.dll";
+        private const string DriverFilename = "ps4000.dll";
         #endregion
 
         #region Driver Imports
         #region Callback delegates
-        public delegate void ps4000BlockReady(short handle, short status, IntPtr pVoid);
-        public delegate void ps4000StreamingReady(
+        public delegate void PS4000BlockReady(short handle, short status, IntPtr pVoid);
+        public delegate void PS4000StreamingReady(
                                                 short handle,
                                                 int noOfSamples,
                                                 uint startIndex,
@@ -109,7 +123,7 @@ namespace PS4000Lib
                                                 short triggered,
                                                 short autoStop,
                                                 IntPtr pVoid);
-        public delegate void ps4000DataReady(
+        public delegate void PS4000DataReady(
                                                 short handle,
                                                 int noOfSamples,
                                                 short overflow,
@@ -118,9 +132,9 @@ namespace PS4000Lib
                                                 IntPtr pVoid);
         #endregion
 
-        [DllImport(_DRIVER_FILENAME, EntryPoint = "ps4000OpenUnit")] public static extern short OpenUnit(out short handle);
-        [DllImport(_DRIVER_FILENAME, EntryPoint = "ps4000CloseUnit")] public static extern short CloseUnit(short handle);
-        [DllImport(_DRIVER_FILENAME, EntryPoint = "ps4000RunBlock")]
+        [DllImport(DriverFilename, EntryPoint = "ps4000OpenUnit")] public static extern short OpenUnit(out short handle);
+        [DllImport(DriverFilename, EntryPoint = "ps4000CloseUnit")] public static extern short CloseUnit(short handle);
+        [DllImport(DriverFilename, EntryPoint = "ps4000RunBlock")]
         public static extern short RunBlock(
                                                 short handle,
                                                 int noOfPreTriggerSamples,
@@ -129,37 +143,37 @@ namespace PS4000Lib
                                                 short oversample,
                                                 out int timeIndisposedMs,
                                                 ushort segmentIndex,
-                                                ps4000BlockReady lpps4000BlockReady,
+                                                PS4000BlockReady lpps4000BlockReady,
                                                 IntPtr pVoid);
-        [DllImport(_DRIVER_FILENAME, EntryPoint = "ps4000Stop")] public static extern short Stop(short handle);
-        [DllImport(_DRIVER_FILENAME, EntryPoint = "ps4000SetChannel")]
+        [DllImport(DriverFilename, EntryPoint = "ps4000Stop")] public static extern short Stop(short handle);
+        [DllImport(DriverFilename, EntryPoint = "ps4000SetChannel")]
         public static extern short SetChannel(
                                                 short handle,
                                                 ChannelType channel,
                                                 short enabled,
                                                 short dc,
                                                 Range range);
-        [DllImport(_DRIVER_FILENAME, EntryPoint = "ps4000SetDataBuffer")]
+        [DllImport(DriverFilename, EntryPoint = "ps4000SetDataBuffer")]
         public static extern short SetDataBuffer(
                                                 short handle,
                                                 ChannelType channel,
                                                 short[] buffer,
                                                 int bufferLth);
-        [DllImport(_DRIVER_FILENAME, EntryPoint = "ps4000SetDataBuffers")]
+        [DllImport(DriverFilename, EntryPoint = "ps4000SetDataBuffers")]
         public static extern short SetDataBuffers(
                                                 short handle,
                                                 ChannelType channel,
                                                 short[] bufferMax,
                                                 short[] bufferMin,
                                                 int bufferLth);
-        [DllImport(_DRIVER_FILENAME, EntryPoint = "ps4000SetDataBufferWithMode")]
+        [DllImport(DriverFilename, EntryPoint = "ps4000SetDataBufferWithMode")]
         public static extern short SetDataBufferWithMode(
                                                 short handle,
                                                 ChannelType channel,
                                                 short[] buffer,
                                                 int bufferLth,
                                                 DownSamplingMode mode);
-        [DllImport(_DRIVER_FILENAME, EntryPoint = "ps4000SetTriggerChannelDirections")]
+        [DllImport(DriverFilename, EntryPoint = "ps4000SetTriggerChannelDirections")]
         public static extern short SetTriggerChannelDirections(
                                                 short handle,
                                                 ThresholdDirection channelA,
@@ -168,7 +182,7 @@ namespace PS4000Lib
                                                 ThresholdDirection channelD,
                                                 ThresholdDirection ext,
                                                 ThresholdDirection aux);
-        [DllImport(_DRIVER_FILENAME, EntryPoint = "ps4000GetTimebase")]
+        [DllImport(DriverFilename, EntryPoint = "ps4000GetTimebase")]
         public static extern short GetTimebase(
                                                 short handle,
                                                 uint timebase,
@@ -177,7 +191,7 @@ namespace PS4000Lib
                                                 short oversample,
                                                 out int maxSamples,
                                                 ushort segmentIndex);
-        [DllImport(_DRIVER_FILENAME, EntryPoint = "ps4000GetValues")]
+        [DllImport(DriverFilename, EntryPoint = "ps4000GetValues")]
         public static extern short GetValues(
                                                 short handle,
                                                 uint startIndex,
@@ -186,7 +200,7 @@ namespace PS4000Lib
                                                 DownSamplingMode downSampleDownSamplingMode,
                                                 ushort segmentIndex,
                                                 out short overflow);
-        [DllImport(_DRIVER_FILENAME, EntryPoint = "ps4000SetPulseWidthQualifier")]
+        [DllImport(DriverFilename, EntryPoint = "ps4000SetPulseWidthQualifier")]
         public static extern short SetPulseWidthQualifier(
                                                 short handle,
                                                 PwqConditions[] conditions,
@@ -195,22 +209,22 @@ namespace PS4000Lib
                                                 uint lower,
                                                 uint upper,
                                                 PulseWidthType type);
-        [DllImport(_DRIVER_FILENAME, EntryPoint = "ps4000SetTriggerChannelProperties")]
+        [DllImport(DriverFilename, EntryPoint = "ps4000SetTriggerChannelProperties")]
         public static extern short SetTriggerChannelProperties(
                                                 short handle,
                                                 TriggerChannelProperties[] channelProperties,
                                                 short numChannelProperties,
                                                 short auxOutputEnable,
                                                 int autoTriggerMilliseconds);
-        [DllImport(_DRIVER_FILENAME, EntryPoint = "ps4000SetTriggerChannelConditions")]
+        [DllImport(DriverFilename, EntryPoint = "ps4000SetTriggerChannelConditions")]
         public static extern short SetTriggerChannelConditions(
                                                 short handle,
                                                 TriggerConditions[] conditions,
                                                 short numConditions);
-        [DllImport(_DRIVER_FILENAME, EntryPoint = "ps4000SetTriggerDelay")] public static extern short SetTriggerDelay(short handle, uint delay);
-        [DllImport(_DRIVER_FILENAME, EntryPoint = "ps4000GetUnitInfo", CharSet = CharSet.Ansi, BestFitMapping = false, ThrowOnUnmappableChar = true)]
+        [DllImport(DriverFilename, EntryPoint = "ps4000SetTriggerDelay")] public static extern short SetTriggerDelay(short handle, uint delay);
+        [DllImport(DriverFilename, EntryPoint = "ps4000GetUnitInfo", CharSet = CharSet.Ansi, BestFitMapping = false, ThrowOnUnmappableChar = true)]
         public static extern short GetUnitInfo(short handle, [MarshalAs(UnmanagedType.LPStr)] StringBuilder infoString, short stringLength, out short requiredSize, int info);
-        [DllImport(_DRIVER_FILENAME, EntryPoint = "ps4000RunStreaming")]
+        [DllImport(DriverFilename, EntryPoint = "ps4000RunStreaming")]
         public static extern short RunStreaming(
                                                 short handle,
                                                 ref uint sampleInterval,
@@ -220,28 +234,28 @@ namespace PS4000Lib
                                                 bool autoStop,
                                                 uint downSamplingRation,
                                                 uint overviewBufferSize);
-        [DllImport(_DRIVER_FILENAME, EntryPoint = "ps4000GetStreamingLatestValues")]
+        [DllImport(DriverFilename, EntryPoint = "ps4000GetStreamingLatestValues")]
         public static extern short GetStreamingLatestValues(
                                                 short handle,
-                                                ps4000StreamingReady lpps4000StreamingReady,
+                                                PS4000StreamingReady lpps4000StreamingReady,
                                                 IntPtr pVoid);
-        [DllImport(_DRIVER_FILENAME, EntryPoint = "ps4000SetNoOfCaptures")]
+        [DllImport(DriverFilename, EntryPoint = "ps4000SetNoOfCaptures")]
         public static extern short SetNoOfRapidCaptures(
                                                 short handle,
                                                 ushort nWaveforms);
-        [DllImport(_DRIVER_FILENAME, EntryPoint = "ps4000MemorySegments")]
+        [DllImport(DriverFilename, EntryPoint = "ps4000MemorySegments")]
         public static extern short MemorySegments(
                                                 short handle,
                                                 ushort nSegments,
                                                 out int nMaxSamples);
-        [DllImport(_DRIVER_FILENAME, EntryPoint = "ps4000SetDataBufferBulk")]
+        [DllImport(DriverFilename, EntryPoint = "ps4000SetDataBufferBulk")]
         public static extern short SetDataBuffersRapid(
                                                 short handle,
                                                 ChannelType channel,
                                                 short[] buffer,
                                                 int bufferLth,
                                                 ushort waveform);
-        [DllImport(_DRIVER_FILENAME, EntryPoint = "ps4000GetValuesBulk")]
+        [DllImport(DriverFilename, EntryPoint = "ps4000GetValuesBulk")]
         public static extern short GetValuesRapid(
                                                 short handle,
                                                 ref uint noOfSamples,

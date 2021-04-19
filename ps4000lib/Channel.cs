@@ -1,5 +1,19 @@
-﻿using PS4000Lib.Enum;
+﻿/*
+ * File: Channel.cs
+ * Project: ps4000lib
+ * Created Date: 19/04/2021
+ * Author: Shun Suzuki
+ * -----
+ * Last Modified: 19/04/2021
+ * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
+ * -----
+ * Copyright (c) 2021 Hapis Lab. All rights reserved.
+ * 
+ */
+
+using PS4000Lib.Enum;
 using System;
+using Range = PS4000Lib.Enum.Range;
 
 namespace PS4000Lib
 {
@@ -55,7 +69,7 @@ namespace PS4000Lib
 
             Name = name;
             _enabled = true;
-            _range = Range.Range_5V;
+            _range = Range.Range5V;
 
             TriggerVoltageMV = 0;
             TriggerMode = ThresholdMode.Level;

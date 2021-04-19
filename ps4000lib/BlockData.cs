@@ -1,18 +1,31 @@
-﻿using PicoPinnedArray;
+﻿/*
+ * File: BlockData.cs
+ * Project: ps4000lib
+ * Created Date: 19/04/2021
+ * Author: Shun Suzuki
+ * -----
+ * Last Modified: 19/04/2021
+ * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
+ * -----
+ * Copyright (c) 2021 Hapis Lab. All rights reserved.
+ * 
+ */
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using PS4000Lib.Shared;
 
 namespace PS4000Lib
 {
     public class BlockData : IDisposable
     {
         private readonly PS4000 _ps4000;
-        private string _data = null;
+        private string _data;
 
         private static bool _changed = true;
-        private static bool _ignoreHeader = false;
+        private static bool _ignoreHeader;
         private static string _delimiter = " ";
 
         internal PinnedArray<short>[] MinPinned;
@@ -26,11 +39,9 @@ namespace PS4000Lib
         {
             get
             {
-                if (_data == null || _changed)
-                {
-                    _data = Format();
-                    _changed = false;
-                }
+                if (_data != null && !_changed) return _data;
+                _data = Format();
+                _changed = false;
 
                 return _data;
             }
@@ -78,13 +89,12 @@ namespace PS4000Lib
 
         private string Format()
         {
-            StringBuilder sb = new StringBuilder();
+            var sb = new StringBuilder();
 
             // Build Header
             if (!IgnoreHeader)
             {
-                List<string> header = new List<string>();
-                header.Add("Time [ns]");
+                var header = new List<string> { "Time [ns]" };
                 if (_showADC) header.Add("Max [ADC]");
                 header.Add("Max [mV]");
                 if (_ps4000.DownSampleRatio > 1)
@@ -95,12 +105,12 @@ namespace PS4000Lib
                 }
 
                 sb.AppendFormat("{0, 12}", header[0]);
-                foreach (Channel ch in _ps4000.EnumerateChannel(false, false).Where(ch => ch.Enabled))
+                foreach (var ch in _ps4000.EnumerateChannel(false, false).Where(ch => ch.Enabled))
                 {
                     sb.Append(Delimiter);
                     sb.AppendJoin(
                             Delimiter,
-                            header.Skip(1).Select(s => string.Format("{0,12}", $"{ch.Name} {s}"))
+                            header.Skip(1).Select(s => $"{$"{ch.Name} {s}",12}")
                         );
                 }
 
@@ -110,8 +120,8 @@ namespace PS4000Lib
             // Build Body
             for (long i = 0; i < SampleCount; i++)
             {
-                sb.AppendFormat("{0,12}", (i * TimeInterval));
-                foreach (Channel ch in _ps4000.EnumerateChannel(false, false).Where(ch => ch.Enabled))
+                sb.AppendFormat("{0,12}", i * TimeInterval);
+                foreach (var ch in _ps4000.EnumerateChannel(false, false).Where(ch => ch.Enabled))
                 {
                     if (_showADC)
                     {
@@ -120,25 +130,23 @@ namespace PS4000Lib
                     }
 
                     sb.Append(Delimiter);
-                    sb.AppendFormat("{0, 12}", PS4000.ConvertADC2mV(MaxPinned[ch.ChannelNum].Target[i], ch.Range, ch.Attenuation));
+                    sb.AppendFormat("{0, 12}", PS4000.ConvertADC2MV(MaxPinned[ch.ChannelNum].Target[i], ch.Range, ch.Attenuation));
 
-                    if (_ps4000.DownSampleRatio > 1)
+                    if (_ps4000.DownSampleRatio <= 1) continue;
+                    if (_showADC)
                     {
-                        if (_showADC)
-                        {
-                            sb.Append(Delimiter);
-                            sb.AppendFormat("{0, 12}", MinPinned[ch.ChannelNum].Target[i]);
-                        }
                         sb.Append(Delimiter);
-                        sb.AppendFormat("{0, 12}", PS4000.ConvertADC2mV(MinPinned[ch.ChannelNum].Target[i], ch.Range, ch.Attenuation));
+                        sb.AppendFormat("{0, 12}", MinPinned[ch.ChannelNum].Target[i]);
                     }
+                    sb.Append(Delimiter);
+                    sb.AppendFormat("{0, 12}", PS4000.ConvertADC2MV(MinPinned[ch.ChannelNum].Target[i], ch.Range, ch.Attenuation));
                 }
                 sb.AppendLine();
             }
             return sb.ToString();
         }
 
-        private bool disposed = false;
+        private bool _disposed;
 
         public void Dispose()
         {
@@ -148,25 +156,25 @@ namespace PS4000Lib
 
         protected virtual void Dispose(bool disposing)
         {
-            if (disposed)
+            if (_disposed)
             {
                 return;
             }
 
             if (disposing)
             {
-                foreach (PinnedArray<short> p in MinPinned)
+                foreach (var p in MinPinned)
                 {
                     p?.Dispose();
                 }
 
-                foreach (PinnedArray<short> p in MaxPinned)
+                foreach (var p in MaxPinned)
                 {
                     p?.Dispose();
                 }
             }
 
-            disposed = true;
+            _disposed = true;
         }
     }
 }
