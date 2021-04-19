@@ -11,8 +11,9 @@
  * 
  */
 
-using PS4000Lib;
 using System;
+using PS4000Lib;
+using Range = PS4000Lib.Enum.Range;
 
 namespace ps4000lib.example.Sample
 {
@@ -22,36 +23,35 @@ namespace ps4000lib.example.Sample
         {
             Console.WriteLine("Collect BlockData Immediately.");
 
-            using (PS4000 ps4000 = new PS4000())
-            {
-                ps4000.Open();
+            using var ps4000 = new PS4000();
+            ps4000.Open();
 
-                ps4000.SamplingRateHz = 10_000;
-                ps4000.BufferSize = 10;
+            ps4000.SamplingRateHz = 10_000_000;
+            ps4000.BufferSize = 10_000;
 
-                ps4000.ChannelA.Range = PS4000Lib.Range.Range_5V;
-                ps4000.ChannelB.Range = PS4000Lib.Range.Range_5V;
-                ps4000.ChannelA.Attenuation = 10;
-                ps4000.ChannelB.Attenuation = 10;
+            ps4000.ChannelA.Range = Range.Range5V;
+            ps4000.ChannelB.Range = Range.Range5V;
+            ps4000.ChannelA.Attenuation = 10;
+            ps4000.ChannelB.Attenuation = 10;
+            ps4000.ChannelB.Enabled = false;
 
-                BlockData blockdata = ps4000.CollectBlockImmediate();
-                Console.WriteLine("******************************************************************************");
-                Console.WriteLine(blockdata);
+            var blockData = ps4000.CollectBlockImmediate();
+            Console.WriteLine("******************************************************************************");
+            Console.WriteLine(blockData);
 
-                BlockData.Delimiter = ",";
-                BlockData.ShowADC = false;
+            BlockData.Delimiter = ",";
+            BlockData.ShowADC = false;
 
-                Console.WriteLine("******************************************************************************");
-                Console.WriteLine(blockdata);
+            Console.WriteLine("******************************************************************************");
+            Console.WriteLine(blockData);
 
-                ps4000.ChannelB.Enabled = false;
-                ps4000.BufferSize = 20;
-                ps4000.SamplingRateHz = 20_000;
-                ps4000.ChannelA.Range = PS4000Lib.Range.Range_20V;
+            ps4000.ChannelB.Enabled = false;
+            ps4000.BufferSize = 20;
+            ps4000.SamplingRateHz = 20_000;
+            ps4000.ChannelA.Range = Range.Range20V;
 
-                Console.WriteLine("******************************************************************************");
-                Console.WriteLine(ps4000.CollectBlockImmediate());
-            }
+            Console.WriteLine("******************************************************************************");
+            Console.WriteLine(ps4000.CollectBlockImmediate());
         }
     }
 }

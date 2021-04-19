@@ -108,7 +108,7 @@ namespace PS4000Lib
     internal class NativeMethods
     {
         #region const
-        private const string DriverFilename = "ps4000.dll";
+        private const string PICO_DRIVER_FILENAME = "ps4000.dll";
         #endregion
 
         #region Driver Imports
@@ -132,9 +132,9 @@ namespace PS4000Lib
                                                 IntPtr pVoid);
         #endregion
 
-        [DllImport(DriverFilename, EntryPoint = "ps4000OpenUnit")] public static extern short OpenUnit(out short handle);
-        [DllImport(DriverFilename, EntryPoint = "ps4000CloseUnit")] public static extern short CloseUnit(short handle);
-        [DllImport(DriverFilename, EntryPoint = "ps4000RunBlock")]
+        [DllImport(PICO_DRIVER_FILENAME, EntryPoint = "ps4000OpenUnit")] public static extern short OpenUnit(out short handle);
+        [DllImport(PICO_DRIVER_FILENAME, EntryPoint = "ps4000CloseUnit")] public static extern short CloseUnit(short handle);
+        [DllImport(PICO_DRIVER_FILENAME, EntryPoint = "ps4000RunBlock")]
         public static extern short RunBlock(
                                                 short handle,
                                                 int noOfPreTriggerSamples,
@@ -145,35 +145,35 @@ namespace PS4000Lib
                                                 ushort segmentIndex,
                                                 PS4000BlockReady lpps4000BlockReady,
                                                 IntPtr pVoid);
-        [DllImport(DriverFilename, EntryPoint = "ps4000Stop")] public static extern short Stop(short handle);
-        [DllImport(DriverFilename, EntryPoint = "ps4000SetChannel")]
+        [DllImport(PICO_DRIVER_FILENAME, EntryPoint = "ps4000Stop")] public static extern short Stop(short handle);
+        [DllImport(PICO_DRIVER_FILENAME, EntryPoint = "ps4000SetChannel")]
         public static extern short SetChannel(
                                                 short handle,
                                                 ChannelType channel,
                                                 short enabled,
                                                 short dc,
                                                 Range range);
-        [DllImport(DriverFilename, EntryPoint = "ps4000SetDataBuffer")]
+        [DllImport(PICO_DRIVER_FILENAME, EntryPoint = "ps4000SetDataBuffer")]
         public static extern short SetDataBuffer(
                                                 short handle,
                                                 ChannelType channel,
                                                 short[] buffer,
                                                 int bufferLth);
-        [DllImport(DriverFilename, EntryPoint = "ps4000SetDataBuffers")]
+        [DllImport(PICO_DRIVER_FILENAME, EntryPoint = "ps4000SetDataBuffers")]
         public static extern short SetDataBuffers(
                                                 short handle,
                                                 ChannelType channel,
                                                 short[] bufferMax,
                                                 short[] bufferMin,
                                                 int bufferLth);
-        [DllImport(DriverFilename, EntryPoint = "ps4000SetDataBufferWithMode")]
+        [DllImport(PICO_DRIVER_FILENAME, EntryPoint = "ps4000SetDataBufferWithMode")]
         public static extern short SetDataBufferWithMode(
                                                 short handle,
                                                 ChannelType channel,
                                                 short[] buffer,
                                                 int bufferLth,
                                                 DownSamplingMode mode);
-        [DllImport(DriverFilename, EntryPoint = "ps4000SetTriggerChannelDirections")]
+        [DllImport(PICO_DRIVER_FILENAME, EntryPoint = "ps4000SetTriggerChannelDirections")]
         public static extern short SetTriggerChannelDirections(
                                                 short handle,
                                                 ThresholdDirection channelA,
@@ -182,7 +182,7 @@ namespace PS4000Lib
                                                 ThresholdDirection channelD,
                                                 ThresholdDirection ext,
                                                 ThresholdDirection aux);
-        [DllImport(DriverFilename, EntryPoint = "ps4000GetTimebase")]
+        [DllImport(PICO_DRIVER_FILENAME, EntryPoint = "ps4000GetTimebase")]
         public static extern short GetTimebase(
                                                 short handle,
                                                 uint timebase,
@@ -191,7 +191,7 @@ namespace PS4000Lib
                                                 short oversample,
                                                 out int maxSamples,
                                                 ushort segmentIndex);
-        [DllImport(DriverFilename, EntryPoint = "ps4000GetValues")]
+        [DllImport(PICO_DRIVER_FILENAME, EntryPoint = "ps4000GetValues")]
         public static extern short GetValues(
                                                 short handle,
                                                 uint startIndex,
@@ -200,7 +200,7 @@ namespace PS4000Lib
                                                 DownSamplingMode downSampleDownSamplingMode,
                                                 ushort segmentIndex,
                                                 out short overflow);
-        [DllImport(DriverFilename, EntryPoint = "ps4000SetPulseWidthQualifier")]
+        [DllImport(PICO_DRIVER_FILENAME, EntryPoint = "ps4000SetPulseWidthQualifier")]
         public static extern short SetPulseWidthQualifier(
                                                 short handle,
                                                 PwqConditions[] conditions,
@@ -209,22 +209,22 @@ namespace PS4000Lib
                                                 uint lower,
                                                 uint upper,
                                                 PulseWidthType type);
-        [DllImport(DriverFilename, EntryPoint = "ps4000SetTriggerChannelProperties")]
+        [DllImport(PICO_DRIVER_FILENAME, EntryPoint = "ps4000SetTriggerChannelProperties")]
         public static extern short SetTriggerChannelProperties(
                                                 short handle,
                                                 TriggerChannelProperties[] channelProperties,
                                                 short numChannelProperties,
                                                 short auxOutputEnable,
                                                 int autoTriggerMilliseconds);
-        [DllImport(DriverFilename, EntryPoint = "ps4000SetTriggerChannelConditions")]
+        [DllImport(PICO_DRIVER_FILENAME, EntryPoint = "ps4000SetTriggerChannelConditions")]
         public static extern short SetTriggerChannelConditions(
                                                 short handle,
                                                 TriggerConditions[] conditions,
                                                 short numConditions);
-        [DllImport(DriverFilename, EntryPoint = "ps4000SetTriggerDelay")] public static extern short SetTriggerDelay(short handle, uint delay);
-        [DllImport(DriverFilename, EntryPoint = "ps4000GetUnitInfo", CharSet = CharSet.Ansi, BestFitMapping = false, ThrowOnUnmappableChar = true)]
+        [DllImport(PICO_DRIVER_FILENAME, EntryPoint = "ps4000SetTriggerDelay")] public static extern short SetTriggerDelay(short handle, uint delay);
+        [DllImport(PICO_DRIVER_FILENAME, EntryPoint = "ps4000GetUnitInfo", CharSet = CharSet.Ansi, BestFitMapping = false, ThrowOnUnmappableChar = true)]
         public static extern short GetUnitInfo(short handle, [MarshalAs(UnmanagedType.LPStr)] StringBuilder infoString, short stringLength, out short requiredSize, int info);
-        [DllImport(DriverFilename, EntryPoint = "ps4000RunStreaming")]
+        [DllImport(PICO_DRIVER_FILENAME, EntryPoint = "ps4000RunStreaming")]
         public static extern short RunStreaming(
                                                 short handle,
                                                 ref uint sampleInterval,
@@ -234,28 +234,28 @@ namespace PS4000Lib
                                                 bool autoStop,
                                                 uint downSamplingRation,
                                                 uint overviewBufferSize);
-        [DllImport(DriverFilename, EntryPoint = "ps4000GetStreamingLatestValues")]
+        [DllImport(PICO_DRIVER_FILENAME, EntryPoint = "ps4000GetStreamingLatestValues")]
         public static extern short GetStreamingLatestValues(
                                                 short handle,
                                                 PS4000StreamingReady lpps4000StreamingReady,
                                                 IntPtr pVoid);
-        [DllImport(DriverFilename, EntryPoint = "ps4000SetNoOfCaptures")]
+        [DllImport(PICO_DRIVER_FILENAME, EntryPoint = "ps4000SetNoOfCaptures")]
         public static extern short SetNoOfRapidCaptures(
                                                 short handle,
                                                 ushort nWaveforms);
-        [DllImport(DriverFilename, EntryPoint = "ps4000MemorySegments")]
+        [DllImport(PICO_DRIVER_FILENAME, EntryPoint = "ps4000MemorySegments")]
         public static extern short MemorySegments(
                                                 short handle,
                                                 ushort nSegments,
                                                 out int nMaxSamples);
-        [DllImport(DriverFilename, EntryPoint = "ps4000SetDataBufferBulk")]
+        [DllImport(PICO_DRIVER_FILENAME, EntryPoint = "ps4000SetDataBufferBulk")]
         public static extern short SetDataBuffersRapid(
                                                 short handle,
                                                 ChannelType channel,
                                                 short[] buffer,
                                                 int bufferLth,
                                                 ushort waveform);
-        [DllImport(DriverFilename, EntryPoint = "ps4000GetValuesBulk")]
+        [DllImport(PICO_DRIVER_FILENAME, EntryPoint = "ps4000GetValuesBulk")]
         public static extern short GetValuesRapid(
                                                 short handle,
                                                 ref uint noOfSamples,
